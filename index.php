@@ -70,6 +70,7 @@ $router->post('/deudas/pagar', function() {
 });
 
 // Recibos
+$router->get('/recibos', 'ReciboController@index');
 $router->get('/recibos/ver/{id}', 'ReciboController@ver');
 $router->get('/recibos/pdf/{id}', 'ReciboController@descargarPDF');
 $router->post('/recibos/enviar', 'ReciboController@enviarPorEmail');

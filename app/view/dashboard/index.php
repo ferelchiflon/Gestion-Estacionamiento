@@ -1,4 +1,6 @@
 <?php $titulo = 'Dashboard'; ?>
+<!-- Chart.js: única vista que lo usa (movido aquí desde el layout en Fase 2) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <div class="row">
     <!-- Tarjetas de resumen -->

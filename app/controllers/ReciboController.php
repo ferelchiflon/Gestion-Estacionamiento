@@ -10,6 +10,17 @@ use App\Services\PDFService;
 class ReciboController extends Controller {
     
     /**
+     * GET /recibos — listado de recibos.
+     * Excepción autorizada por el usuario: método + ruta nuevos para la
+     * sección "Recibos" del layout. Reutiliza Recibo::listar() (ya existía).
+     */
+    public function index() {
+        $this->view('recibos/index', [
+            'recibos' => (new Recibo())->listar(100)
+        ]);
+    }
+    
+    /**
      * Genera un recibo a partir de un movimiento pagado.
      * Devuelve el id del recibo creado.
      */

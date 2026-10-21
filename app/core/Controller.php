@@ -7,7 +7,7 @@ abstract class Controller {
         $viewPath = BASE_PATH . "/app/view/{$view}.php";
         
         if(file_exists($viewPath)) {
-            require_once BASE_PATH . '/app/view/layouts/headear.php';
+            require_once BASE_PATH . '/app/view/layouts/header.php';
             require_once $viewPath;
             require_once BASE_PATH . '/app/view/layouts/footer.php';
         } else {
