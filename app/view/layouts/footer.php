@@ -33,6 +33,21 @@ $fechaHoy = $dias[(int)date('w')] . ', ' . date('j') . ' de ' . $meses[(int)date
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($tituloPagina) ?> · Estacionamiento</title>
 
+    <!-- Anti-FOUC: aplica el tema guardado (o el del sistema) antes de pintar -->
+    <script>
+    (function () {
+        try {
+            var t = localStorage.getItem('theme');
+            if (t !== 'dark' && t !== 'light') {
+                t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    })();
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -57,6 +72,12 @@ $fechaHoy = $dias[(int)date('w')] . ', ' . date('j') . ' de ' . $meses[(int)date
             <span class="topbar-date"><?= $fechaHoy ?></span>
 
             <span class="topbar-spacer"></span>
+
+            <button type="button" class="btn btn-outline-secondary topbar-theme-btn"
+                    data-theme-toggle aria-label="Cambiar entre modo claro y oscuro"
+                    title="Modo claro / oscuro">
+                <i class="bi bi-moon-stars" data-theme-icon aria-hidden="true"></i>
+            </button>
 
             <a href="<?= BASE_URL ?>/movimientos/ingreso" class="btn btn-primary btn-sm topbar-cta">
                 <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo ingreso

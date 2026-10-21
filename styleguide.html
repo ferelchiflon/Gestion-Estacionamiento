@@ -12,6 +12,35 @@
 <link href="assets/css/theme.css" rel="stylesheet">
 </head>
 <body>
+<button type="button" class="btn btn-outline-secondary" data-theme-toggle
+        style="position:fixed;top:16px;right:16px;z-index:1080"
+        aria-label="Cambiar entre modo claro y oscuro">
+  <i class="bi bi-moon-stars" data-theme-icon aria-hidden="true"></i>
+</button>
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem('theme');
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+  })();
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-theme-toggle]');
+    if (!btn) { return; }
+    var oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+    var nuevo = oscuro ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', nuevo);
+    try { localStorage.setItem('theme', nuevo); } catch (err) {}
+    var icono = btn.querySelector('[data-theme-icon]');
+    if (icono) {
+      icono.classList.toggle('bi-moon-stars', nuevo === 'light');
+      icono.classList.toggle('bi-sun', nuevo === 'dark');
+    }
+  });
+</script>
 <div class="container py-5" style="max-width:980px">
 
   <div class="alert alert-info d-flex align-items-center gap-2 mb-4">

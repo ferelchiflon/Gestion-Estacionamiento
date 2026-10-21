@@ -21,11 +21,14 @@
   --c-danger:#b91c1c;  --c-danger-bg:#fef2f2;  --c-danger-border:#fecaca;
   --c-warning:#92400e; --c-warning-bg:#fffbeb; --c-warning-border:#fde68a;
   --c-info:#075985;    --c-info-bg:#f0f9ff;    --c-info-border:#bae6fd;
+  --c-success-hover:#065f46; --c-danger-hover:#991b1b; --c-warning-hover:#78350f;
+  --c-danger-outline-border:#fca5a5;
 
   /* --- Superficies --- */
   --c-bg:#f6f7f9;
   --c-surface:#ffffff;
   --c-border:#e5e7eb;
+  color-scheme:light;
 
   /* --- Texto --- */
   --c-text:#111827;
@@ -100,32 +103,32 @@ a:focus-visible {
 .btn-primary:disabled,
 .btn-primary.disabled { background:var(--c-primary-300); border-color:var(--c-primary-300); }
 
-.btn-secondary { background:#fff; border-color:var(--c-gray-300); color:var(--c-gray-700); }
+.btn-secondary { background:var(--c-surface); border-color:var(--c-gray-300); color:var(--c-gray-700); }
 .btn-secondary:hover,
 .btn-secondary:focus { background:var(--c-gray-50); border-color:var(--c-gray-400); color:var(--c-gray-800); }
 .btn-secondary:active { background:var(--c-gray-100)!important; border-color:var(--c-gray-400)!important; color:var(--c-gray-800)!important; }
 
 .btn-success { background:var(--c-success); border-color:var(--c-success); color:#fff; }
 .btn-success:hover,
-.btn-success:focus { background:#065f46; border-color:#065f46; color:#fff; }
+.btn-success:focus { background:var(--c-success-hover); border-color:var(--c-success-hover); color:#fff; }
 
 .btn-danger { background:var(--c-danger); border-color:var(--c-danger); color:#fff; }
 .btn-danger:hover,
-.btn-danger:focus { background:#991b1b; border-color:#991b1b; color:#fff; }
+.btn-danger:focus { background:var(--c-danger-hover); border-color:var(--c-danger-hover); color:#fff; }
 
 .btn-warning { background:var(--c-warning); border-color:var(--c-warning); color:#fff; }
 .btn-warning:hover,
-.btn-warning:focus { background:#78350f; border-color:#78350f; color:#fff; }
+.btn-warning:focus { background:var(--c-warning-hover); border-color:var(--c-warning-hover); color:#fff; }
 
-.btn-outline-primary { color:var(--c-primary-600); border-color:var(--c-primary-300); background:#fff; }
+.btn-outline-primary { color:var(--c-primary-600); border-color:var(--c-primary-300); background:var(--c-surface); }
 .btn-outline-primary:hover,
 .btn-outline-primary:focus { background:var(--c-primary-50); border-color:var(--c-primary-600); color:var(--c-primary-700); }
 
-.btn-outline-secondary { color:var(--c-gray-700); border-color:var(--c-gray-300); background:#fff; }
+.btn-outline-secondary { color:var(--c-gray-700); border-color:var(--c-gray-300); background:var(--c-surface); }
 .btn-outline-secondary:hover,
 .btn-outline-secondary:focus { background:var(--c-gray-50); border-color:var(--c-gray-400); color:var(--c-gray-800); }
 
-.btn-outline-danger { color:var(--c-danger); border-color:#fca5a5; background:#fff; }
+.btn-outline-danger { color:var(--c-danger); border-color:var(--c-danger-outline-border); background:var(--c-surface); }
 .btn-outline-danger:hover,
 .btn-outline-danger:focus { background:var(--c-danger-bg); border-color:var(--c-danger); color:var(--c-danger); }
 
@@ -412,3 +415,96 @@ a:focus-visible {
   .topbar-date { display:none; }
   .app-topbar { padding:0 var(--sp-3); }
 }
+/* ==========================================================================
+   MODO OSCURO — html[data-theme="dark"]
+   Remapea tokens; los componentes heredan automáticamente.
+   Persistencia y toggle: ver assets/js/app.js y el anti-FOUC del layout.
+   ========================================================================== */
+html[data-theme="dark"] {
+  color-scheme:dark;
+
+  /* Neutros → escala slate oscura */
+  --c-gray-50:#1b2434;
+  --c-gray-100:#161f2e;
+  --c-gray-200:#243044;
+  --c-gray-300:#33415c;
+  --c-gray-400:#64748b;
+  --c-gray-500:#8fa0b5;
+  --c-gray-600:#aab8cc;
+  --c-gray-700:#c3cede;
+  --c-gray-800:#dee6ef;
+  --c-gray-900:#f1f5f9;
+
+  /* Primario: fondos translúcidos y texto claro para badges/activos */
+  --c-primary-50:rgba(99,102,241,.16);
+  --c-primary-100:rgba(99,102,241,.24);
+  --c-primary-700:#a5b4fc;
+
+  /* Semánticos: variantes luminosas para texto/badges sobre oscuro */
+  --c-success:#34d399; --c-success-bg:rgba(16,185,129,.14); --c-success-border:rgba(52,211,153,.35);
+  --c-danger:#f87171;  --c-danger-bg:rgba(239,68,68,.14);  --c-danger-border:rgba(248,113,113,.35);
+  --c-warning:#fbbf24; --c-warning-bg:rgba(245,158,11,.14); --c-warning-border:rgba(251,191,36,.35);
+  --c-info:#7dd3fc;    --c-info-bg:rgba(14,165,233,.14);   --c-info-border:rgba(125,211,252,.35);
+  --c-success-hover:#059669; --c-danger-hover:#dc2626; --c-warning-hover:#d97706;
+  --c-danger-outline-border:rgba(248,113,113,.55);
+
+  /* Superficies y texto */
+  --c-bg:#0b0f17;
+  --c-surface:#111827;
+  --c-border:#243044;
+  --c-text:#f1f5f9;
+  --c-text-2:#cbd5e1;
+  --c-text-3:#8fa0b5;
+
+  --shadow-xs:0 1px 2px rgba(0,0,0,.4);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.5);
+  --ring:0 0 0 3px rgba(129,140,248,.35);
+}
+
+/* --- Ajustes finos: fondos nativos de Bootstrap que en claro eran blancos --- */
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] .form-select {
+  background-color:var(--c-gray-100);
+  color:var(--c-text);
+}
+html[data-theme="dark"] .form-control::placeholder { color:var(--c-gray-500); }
+html[data-theme="dark"] .form-select {
+  background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23aab8cc' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .dropdown-menu { background:var(--c-surface); }
+html[data-theme="dark"] .modal-content { box-shadow:0 8px 24px rgba(0,0,0,.6); }
+html[data-theme="dark"] .btn-close { filter:invert(1) grayscale(100%) brightness(200%); }
+
+/* Botones sólidos: mantener fondo saturado con texto blanco */
+html[data-theme="dark"] .btn-primary:hover,
+html[data-theme="dark"] .btn-primary:focus { background:var(--c-primary-500); border-color:var(--c-primary-500); }
+html[data-theme="dark"] .btn-primary:disabled,
+html[data-theme="dark"] .btn-primary.disabled { background:var(--c-primary-800); border-color:var(--c-primary-800); }
+html[data-theme="dark"] .btn-success { background:#047857; border-color:#047857; }
+html[data-theme="dark"] .btn-success:hover,
+html[data-theme="dark"] .btn-success:focus { background:var(--c-success-hover); border-color:var(--c-success-hover); }
+html[data-theme="dark"] .btn-danger { background:#b91c1c; border-color:#b91c1c; }
+html[data-theme="dark"] .btn-danger:hover,
+html[data-theme="dark"] .btn-danger:focus { background:var(--c-danger-hover); border-color:var(--c-danger-hover); }
+html[data-theme="dark"] .btn-warning { background:#b45309; border-color:#b45309; }
+html[data-theme="dark"] .btn-warning:hover,
+html[data-theme="dark"] .btn-warning:focus { background:var(--c-warning-hover); border-color:var(--c-warning-hover); }
+
+html[data-theme="dark"] .btn-outline-primary { color:var(--c-primary-300); }
+html[data-theme="dark"] .btn-outline-primary:hover,
+html[data-theme="dark"] .btn-outline-primary:focus { background:var(--c-primary-50); color:var(--c-primary-200); }
+
+/* Enlaces y foco más visibles sobre fondo oscuro */
+html[data-theme="dark"] a { color:var(--c-primary-400); }
+html[data-theme="dark"] a:hover { color:var(--c-primary-300); }
+html[data-theme="dark"] .btn:focus-visible,
+html[data-theme="dark"] .form-control:focus-visible,
+html[data-theme="dark"] .form-select:focus-visible,
+html[data-theme="dark"] .form-check-input:focus-visible,
+html[data-theme="dark"] a:focus-visible { outline-color:var(--c-primary-400); }
+
+/* Sidebar: ícono del ítem activo más luminoso */
+html[data-theme="dark"] .sidebar-link.active i { color:var(--c-primary-300); }
+

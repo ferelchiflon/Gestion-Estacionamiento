@@ -46,4 +46,27 @@
       });
     });
   });
+
+  // --- Modo claro/oscuro: toggle + persistencia ---
+  // El atributo data-theme en <html> lo fija el anti-FOUC del layout antes del CSS.
+  var themeIcon = document.querySelector('[data-theme-icon]');
+
+  function pintarIconoTema() {
+    var oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (themeIcon) {
+      themeIcon.classList.toggle('bi-moon-stars', !oscuro);
+      themeIcon.classList.toggle('bi-sun', oscuro);
+    }
+  }
+  pintarIconoTema();
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+      var nuevo = oscuro ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', nuevo);
+      try { localStorage.setItem('theme', nuevo); } catch (e) { /* almacenamiento no disponible */ }
+      pintarIconoTema();
+    });
+  });
 })();
