@@ -1,0 +1,9 @@
+# Front controller: todas las rutas pasan por index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # No reescribir archivos o directorios reales (assets, etc.)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
