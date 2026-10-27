@@ -1,0 +1,16 @@
+{
+  "name": "gestion-estacionamiento",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de Gestión de Estacionamiento - tooling de base de datos (PostgreSQL 18 / Postgres.app)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "migrate": "node scripts/migrate.js",
+    "test:db": "node scripts/test-db.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

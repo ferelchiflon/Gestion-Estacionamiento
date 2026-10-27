@@ -1,2 +1,7 @@
 .DS_Store
 storage/logs/*.log
+.env
+.env.local
+/backups
+/storage/logs
+node_modules/
