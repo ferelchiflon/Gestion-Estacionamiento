@@ -6,6 +6,8 @@ import {
   Users,
   UserCheck,
   Car,
+  SquareParking,
+  DollarSign,
 } from "lucide-react";
 import LogoutButton from "@/components/logout-button";
 import { requirePageUser } from "@/lib/auth/guards";
@@ -51,6 +53,22 @@ export default async function AppLayout({
             >
               <Car size={16} />
               <span>Vehículos</span>
+            </Link>
+
+            <Link
+              href="/plazas"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              <SquareParking size={16} />
+              <span>Plazas</span>
+            </Link>
+
+            <Link
+              href="/tarifas"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              <DollarSign size={16} />
+              <span>Tarifas</span>
             </Link>
 
             {can(user.rol, "usuarios.manage") ? (
