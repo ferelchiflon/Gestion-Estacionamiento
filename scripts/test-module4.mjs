@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -195,23 +196,22 @@ await check("doble clic en cobrar -> un solo cobro y un solo recibo", async () =
   await c.end();
 });
 
-// TEST 3: Cálculo de tarifa en casos borde (minuto 0, tolerancia, cambio de día, cambio de tarifa)
-await check("cálculo de tarifa en casos borde", async () => {
-  const { calcularHorasFacturables } = await import(
-    path.join(root, "web", "src", "lib", "calculo-estadia.ts")
+// TEST 3: Cálculo de tarifa en casos borde (minuto 0, tolerancia, cambio de día, varios días).
+// La lógica vive en TypeScript (web/src/lib/calculo-estadia.ts) y usa el alias
+// "@/": node plano no puede resolverlo, así que se ejecuta la suite de vitest
+// filtrada al bloque "Regla PHP", que corre contra el código real.
+await check("cálculo de tarifa en casos borde (suite vitest: Regla PHP)", async () => {
+  const webDir = path.join(root, "web");
+  const vitestBin = path.join(webDir, "node_modules", ".bin", "vitest");
+  const resultado = spawnSync(
+    vitestBin,
+    ["run", "tests/modulo4.test.ts", "-t", "Regla PHP"],
+    { cwd: webDir, encoding: "utf8" }
   );
-
-  // Minuto 0: cobra 1 hora mínima
-  const t0 = calcularHorasFacturables("2026-10-21 10:00:00", "2026-10-21 10:00:00");
-  if (t0.horasCobrables !== 1) throw new Error("Minuto 0 debe cobrar 1 hora");
-
-  // 1 hora y 1 segundo/minuto: cobra 2 horas
-  const t1 = calcularHorasFacturables("2026-10-21 10:00:00", "2026-10-21 11:01:00");
-  if (t1.horasCobrables !== 2) throw new Error("1h 1m debe cobrar 2 horas");
-
-  // Cambio de día (23:00 a 01:00 del día siguiente): 2 horas
-  const tDia = calcularHorasFacturables("2026-10-21 23:00:00", "2026-10-22 01:00:00");
-  if (tDia.horasCobrables !== 2) throw new Error("Cambio de día debe calcular 2 horas");
+  if (resultado.status !== 0) {
+    const cola = `${resultado.stdout ?? ""}\n${resultado.stderr ?? ""}`.slice(-1500);
+    throw new Error(`vitest terminó con status ${resultado.status}:\n${cola}`);
+  }
 });
 
 // TEST 4: Salida con deuda

@@ -1,4 +1,5 @@
 import { getPool } from "@/lib/db";
+import { pesosTextoACentavos } from "@/lib/dinero";
 import { type TipoVehiculo } from "@/lib/validations/modulo3";
 import { TIMEZONE_AR } from "@/lib/format";
 import type { PoolClient } from "pg";
@@ -6,8 +7,8 @@ import type { PoolClient } from "pg";
 export type TarifaVigente = {
   id: number;
   tipo_vehiculo: TipoVehiculo;
-  tarifa_hora: number; // En pesos decimales
-  tarifa_hora_centavos: number; // En centavos enteros para cálculos seguros
+  tarifa_hora: string; // Numeric PostgreSQL exacto, por ejemplo "1500.50"
+  tarifa_hora_centavos: number; // Enteros para cálculos seguros
   fecha_desde: string;
   fecha_hasta: string | null;
 };
@@ -53,7 +54,8 @@ export async function obtenerTarifaVigente(
     SELECT 
       id,
       tipo_vehiculo,
-      tarifa_hora::numeric(14,2) AS tarifa_hora,
+      tarifa_hora::numeric(14,2)::text AS tarifa_hora,
+      (tarifa_hora * 100)::int AS tarifa_hora_centavos,
       to_char(fecha_desde, 'YYYY-MM-DD') AS fecha_desde,
       to_char(fecha_hasta, 'YYYY-MM-DD') AS fecha_hasta
     FROM tarifas
@@ -72,13 +74,21 @@ export async function obtenerTarifaVigente(
   }
 
   const row = res.rows[0];
-  const tarifaNum = Number(row.tarifa_hora);
-  const tarifaCentavos = Math.round(tarifaNum * 100);
+  const tarifaCentavos = Number(row.tarifa_hora_centavos);
+  if (!Number.isSafeInteger(tarifaCentavos)) {
+    throw new Error("La tarifa vigente excede el rango seguro de centavos");
+  }
+
+  // Respaldo defensivo para respuestas numéricasapedidas como string.
+  const tarifaCentavosDesdeTexto = pesosTextoACentavos(row.tarifa_hora);
+  if (tarifaCentavos !== tarifaCentavosDesdeTexto) {
+    throw new Error("La tarifa vigente no es consistente en centavos");
+  }
 
   return {
     id: row.id,
     tipo_vehiculo: row.tipo_vehiculo as TipoVehiculo,
-    tarifa_hora: tarifaNum,
+    tarifa_hora: row.tarifa_hora,
     tarifa_hora_centavos: tarifaCentavos,
     fecha_desde: row.fecha_desde,
     fecha_hasta: row.fecha_hasta,

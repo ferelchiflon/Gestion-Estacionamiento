@@ -1,3 +1,5 @@
+import { centavosAPesosTexto } from "@/lib/dinero";
+
 /**
  * Reglas de cálculo de estadía y tarifas de estacionamiento.
  * Replicación exacta de la lógica de PHP:
@@ -12,7 +14,7 @@ export type CalculoEstadia = {
   horasCobrables: number;
   tarifaHoraCentavos: number;
   montoTotalCentavos: number;
-  montoTotalPesos: number;
+  montoTotalPesos: string;
 };
 
 /**
@@ -52,8 +54,16 @@ export function calcularMontoEstadia(
     fechaSalida
   );
 
+  if (!Number.isSafeInteger(tarifaHoraCentavos) || tarifaHoraCentavos < 0) {
+    throw new Error("La tarifa en centavos debe ser un entero no negativo");
+  }
+
   const montoTotalCentavos = horasCobrables * tarifaHoraCentavos;
-  const montoTotalPesos = montoTotalCentavos / 100;
+  if (!Number.isSafeInteger(montoTotalCentavos)) {
+    throw new Error("El monto total excede el rango seguro de centavos");
+  }
+
+  const montoTotalPesos = centavosAPesosTexto(montoTotalCentavos);
 
   return {
     minutosTotales,

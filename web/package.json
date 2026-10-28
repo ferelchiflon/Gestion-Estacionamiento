@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db:module1": "node ../scripts/test-module1.mjs",
+    "test:db:module4": "node ../scripts/test-module4.mjs",
     "user:create": "node scripts/create-admin.mjs"
   },
   "dependencies": {

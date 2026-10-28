@@ -43,8 +43,8 @@ type Movimiento = {
   // Campos calculados por el servidor para activos
   tiempo_transcurrido_minutos?: number;
   horas_estimadas?: number;
-  monto_estimado?: number;
-  tarifa_hora_aplicada?: number;
+  monto_estimado?: number | string;
+  tarifa_hora_aplicada?: number | string;
 };
 
 type PlazaLibre = {
