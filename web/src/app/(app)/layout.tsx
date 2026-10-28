@@ -8,6 +8,7 @@ import {
   Car,
   SquareParking,
   DollarSign,
+  ArrowRightLeft,
 } from "lucide-react";
 import LogoutButton from "@/components/logout-button";
 import { requirePageUser } from "@/lib/auth/guards";
@@ -22,7 +23,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-xs">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-xs print:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/dashboard" className="flex items-center gap-2 font-bold text-slate-800">
             <CarFront className="text-teal-700" size={24} />
@@ -32,27 +33,19 @@ export default async function AppLayout({
 
           <nav className="flex items-center gap-1 sm:gap-2">
             <Link
+              href="/movimientos"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800 hover:bg-teal-100"
+            >
+              <ArrowRightLeft size={16} />
+              <span>Operaciones</span>
+            </Link>
+
+            <Link
               href="/dashboard"
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
             >
               <LayoutDashboard size={16} />
               <span className="hidden md:inline">Dashboard</span>
-            </Link>
-
-            <Link
-              href="/clientes"
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-            >
-              <UserCheck size={16} />
-              <span>Clientes</span>
-            </Link>
-
-            <Link
-              href="/vehiculos"
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-            >
-              <Car size={16} />
-              <span>Vehículos</span>
             </Link>
 
             <Link
@@ -64,11 +57,27 @@ export default async function AppLayout({
             </Link>
 
             <Link
+              href="/vehiculos"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              <Car size={16} />
+              <span className="hidden md:inline">Vehículos</span>
+            </Link>
+
+            <Link
+              href="/clientes"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              <UserCheck size={16} />
+              <span className="hidden md:inline">Clientes</span>
+            </Link>
+
+            <Link
               href="/tarifas"
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
             >
               <DollarSign size={16} />
-              <span>Tarifas</span>
+              <span className="hidden lg:inline">Tarifas</span>
             </Link>
 
             {can(user.rol, "usuarios.manage") ? (
@@ -77,7 +86,7 @@ export default async function AppLayout({
                 className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
                 <Users size={16} />
-                <span className="hidden md:inline">Usuarios</span>
+                <span className="hidden lg:inline">Usuarios</span>
               </Link>
             ) : null}
           </nav>
@@ -95,7 +104,7 @@ export default async function AppLayout({
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 print:p-0">{children}</main>
     </div>
   );
 }
