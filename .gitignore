@@ -5,3 +5,4 @@ storage/logs/*.log
 /backups
 /storage/logs
 node_modules/
+web/.next/
