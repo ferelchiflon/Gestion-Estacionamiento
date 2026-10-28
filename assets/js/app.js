@@ -1,30 +1,10 @@
 /**
- * app.js — comportamiento compartido del layout (Fase 2)
+ * app.js — comportamiento compartido del layout (Fase 3 · UI espacial)
  * Vanilla JS, sin dependencias más allá de Bootstrap bundle.
+ * El tema es ÚNICO oscuro: ya no hay toggle claro/oscuro ni sidebar.
  */
 (function () {
   'use strict';
-
-  var body = document.body;
-  var toggle = document.querySelector('[data-sidebar-toggle]');
-  var backdrop = document.querySelector('[data-sidebar-close]');
-
-  function cerrarSidebar() {
-    body.classList.remove('sidebar-open');
-    if (toggle) { toggle.setAttribute('aria-expanded', 'false'); }
-  }
-
-  // --- Sidebar colapsable en móvil ---
-  if (toggle) {
-    toggle.addEventListener('click', function () {
-      var abierto = body.classList.toggle('sidebar-open');
-      toggle.setAttribute('aria-expanded', abierto ? 'true' : 'false');
-    });
-  }
-  if (backdrop) { backdrop.addEventListener('click', cerrarSidebar); }
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { cerrarSidebar(); }
-  });
 
   // --- Toasts de mensajes flash (éxito/error/aviso) ---
   document.querySelectorAll('.toast-stack .toast').forEach(function (el) {
@@ -47,26 +27,22 @@
     });
   });
 
-  // --- Modo claro/oscuro: toggle + persistencia ---
-  // El atributo data-theme en <html> lo fija el anti-FOUC del layout antes del CSS.
-  var themeIcon = document.querySelector('[data-theme-icon]');
-
-  function pintarIconoTema() {
-    var oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
-    if (themeIcon) {
-      themeIcon.classList.toggle('bi-moon-stars', !oscuro);
-      themeIcon.classList.toggle('bi-sun', oscuro);
-    }
-  }
-  pintarIconoTema();
-
-  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
-      var nuevo = oscuro ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', nuevo);
-      try { localStorage.setItem('theme', nuevo); } catch (e) { /* almacenamiento no disponible */ }
-      pintarIconoTema();
+  // --- Inclinación sutil de paneles .tilt (estilo espacial) ---
+  // Solo con puntero fino y sin preferencia de movimiento reducido.
+  if (window.matchMedia('(hover: hover) and (pointer: fine)').matches &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('.tilt').forEach(function (el) {
+      el.addEventListener('pointermove', function (e) {
+        var r = el.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width - 0.5;
+        var y = (e.clientY - r.top) / r.height - 0.5;
+        el.style.setProperty('--ry', (x * 5).toFixed(2) + 'deg');
+        el.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
+      });
+      el.addEventListener('pointerleave', function () {
+        el.style.setProperty('--rx', '0deg');
+        el.style.setProperty('--ry', '0deg');
+      });
     });
-  });
+  }
 })();

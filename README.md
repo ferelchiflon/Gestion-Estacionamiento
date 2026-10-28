@@ -21,6 +21,7 @@ IIBB, ARCA) y asistente de ayuda (bot).
 | `database/migrations/001_initial_schema.sql` | Esquema completo: dinero `NUMERIC(14,2)`, soft-delete (`eliminado_en`), CHECKs de valores permitidos, índice único parcial de movimientos abiertos, EXCLUDE de contratos solapados (btree_gist), auditoría inmutable por triggers. |
 | `database/migrations/002_seed.sql` | Semilla: tipos_alquiler (Diario/Mensual/Anual), configuracion_fiscal id=1 vacía, 8 categorías de gasto. |
 | `database/migrations/003_roles_permisos.sql` | Rol `app_estacionamiento` con mínimo privilegio (sin DELETE ni TRUNCATE; auditoría solo SELECT/INSERT; secuencias con USAGE/SELECT; ALTER DEFAULT PRIVILEGES). |
+| `database/migrations/004_auth_usuarios.sql` | Módulo 1: `token_version` para invalidar sesiones, `eliminado_en` para borrado lógico de usuarios e índices de rol/bloqueo. |
 
 El runner registra `version`, `checksum` (sha256 del archivo) y `applied_at` en
 `schema_migrations`, y aborta si un archivo ya aplicado cambia su checksum.
@@ -42,9 +43,43 @@ aplicación (`app_estacionamiento`) están definidos como constantes en
 `scripts/test-db.js` y `database/migrations/003_roles_permisos.sql`
 respectivamente.
 
+Para la app Next.js crear además `web/.env.local` (no se versiona) con:
+
+```
+PGHOST=127.0.0.1
+PGPORT=5432
+PGDATABASE=gestion_estacionamiento
+APP_DB_USER=app_estacionamiento
+APP_DB_PASSWORD=<el mismo password del rol app>
+AUTH_SECRET=<generar con: openssl rand -base64 48>
+```
+
 El password del rol de aplicación **nunca** se escribe en las migraciones: se
 pasa por variable (`psql -v app_password="..."`) o lo lee el runner desde
 `.env.local`.
+
+## Aplicación Next.js (módulo 1)
+
+- Next.js App Router + TypeScript + Tailwind CSS.
+- Autenticación con cookie `gestion_session` httpOnly, `SameSite=Lax`, firmada con `jose`.
+- Expiración de sesión: 8 horas. Cambio de clave, cambio de rol, desactivación y borrado lógico incrementan `token_version` e invalidan el JWT actual.
+- Middleware deny-by-default: sólo `/login` y `POST /api/auth/login` son públicos; `/usuarios` y `/api/usuarios` exigen `admin`.
+- Cada API vuelve a verificar sesión y rol contra la base; no confía sólo en el middleware.
+- Mutaciones verifican `Origin`/`Host`.
+- Bloqueo tras 5 intentos fallidos por 15 minutos.
+- Auditoría en `auditoria_cambios` para creación, actualización y borrado lógico de usuarios.
+- Primer admin local:
+
+```bash
+cd web
+npm run user:create -- --email admin@estacionamiento.local --password 'AdminLocal2026!'
+```
+
+Pantallas de prueba:
+
+- `http://localhost:3000/login`
+- `http://localhost:3000/dashboard`
+- `http://localhost:3000/usuarios` (sólo admin)
 
 ## Comandos
 
@@ -52,6 +87,14 @@ pasa por variable (`psql -v app_password="..."`) o lo lee el runner desde
 npm install          # instala pg (cliente PostgreSQL para Node)
 npm run migrate      # aplica migraciones pendientes a $PGDATABASE
 npm run test:db      # recrea $PGDATABASE_TEST, aplica migraciones y corre pruebas de integridad
+npm run test:module1 # recrea la base de test y prueba permisos/auditoría del módulo 1
+
+cd web
+npm install
+npm run dev          # Next.js en http://localhost:3000
+npm run lint
+npm test
+npm run build
 ```
 
 ## Rol de aplicación

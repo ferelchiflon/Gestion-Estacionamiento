@@ -66,3 +66,38 @@
         </div>
     </div>
 </div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card h-100 border-warning">
+            <div class="card-header bg-warning bg-opacity-10"><i class="fas fa-landmark"></i> Impuestos <span class="badge bg-secondary ms-1">ARCA (ex AFIP)</span></div>
+            <div class="card-body d-grid gap-2">
+                <a href="<?= BASE_URL ?>/reportes-contables/iva-ventas" class="btn btn-outline-warning text-dark">
+                    <i class="fas fa-file-invoice-dollar"></i> IVA Ventas
+                </a>
+                <a href="<?= BASE_URL ?>/reportes-contables/iva-compras" class="btn btn-outline-warning text-dark">
+                    <i class="fas fa-shopping-cart"></i> IVA Compras
+                </a>
+                <a href="<?= BASE_URL ?>/reportes-contables/posicion-iva" class="btn btn-outline-warning text-dark">
+                    <i class="fas fa-balance-scale"></i> Posición de IVA mensual
+                </a>
+                <a href="<?= BASE_URL ?>/reportes-contables/arca" class="btn btn-outline-warning text-dark">
+                    <i class="fas fa-landmark"></i> ARCA (ex AFIP) - Comprobantes
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 border-secondary">
+            <div class="card-header"><i class="fas fa-calculator"></i> Contabilidad</div>
+            <div class="card-body d-grid gap-2">
+                <a href="<?= BASE_URL ?>/gastos" class="btn btn-outline-secondary">
+                    <i class="fas fa-shopping-cart"></i> Gastos y compras (ABM)
+                </a>
+                <a href="<?= BASE_URL ?>/configuracion-fiscal" class="btn btn-outline-secondary">
+                    <i class="fas fa-cogs"></i> Configuración fiscal (IVA, IIBB, ARCA)
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

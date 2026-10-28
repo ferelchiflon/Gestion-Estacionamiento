@@ -8,7 +8,8 @@
   },
   "scripts": {
     "migrate": "node scripts/migrate.js",
-    "test:db": "node scripts/test-db.js"
+    "test:db": "node scripts/test-db.js",
+    "test:module1": "node scripts/test-module1.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1"

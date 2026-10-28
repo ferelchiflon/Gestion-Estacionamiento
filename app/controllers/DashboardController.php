@@ -20,7 +20,8 @@ class DashboardController extends Controller {
             'alquileres_activos' => count($alquilerModel->where("estado = 'activo'")),
             'ingresos_mes' => $this->getIngresosDelMes(),
             'movimientos_recientes' => $this->getMovimientosRecientes(),
-            'alertas' => $this->getAlertas()
+            'alertas' => $this->getAlertas(),
+            'mapa_plazas' => $this->getMapaPlazas()
         ];
         
         $this->view('dashboard/index', $data);
@@ -48,7 +49,23 @@ class DashboardController extends Controller {
                 LIMIT 10";
         return (new Movimiento())->db->query($sql)->fetchAll();
     }
-    
+
+    /**
+     * Fase 3 (excepción autorizada): estado real de cada plaza para el mapa
+     * del dashboard. Solo lectura: una plaza está ocupada si tiene un
+     * movimiento sin hora_salida; si no, vale su estado propio.
+     */
+    private function getMapaPlazas() {
+        $sql = "SELECT p.id, p.numero, p.sector, p.tipo_vehiculo,
+                       CASE WHEN m.id IS NOT NULL THEN 'ocupada'
+                            ELSE p.estado END as estado,
+                       m.patente
+                FROM plazas p
+                LEFT JOIN movimientos m ON m.plaza_id = p.id AND m.hora_salida IS NULL
+                ORDER BY p.sector, p.numero";
+        return (new Movimiento())->db->query($sql)->fetchAll();
+    }
+
     private function getAlertas() {
         $alertas = [];
         

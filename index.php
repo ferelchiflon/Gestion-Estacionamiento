@@ -97,12 +97,37 @@ $router->get('/reportes/caja', 'ReporteController@caja');
 $router->get('/reportes/deudas', 'ReporteController@deudas');
 $router->get('/reportes/ocupacion', 'ReporteController@ocupacion');
 
+// Configuración fiscal (módulo contable: IVA, IIBB, ARCA)
+$router->get('/configuracion-fiscal', 'ConfiguracionFiscalController@index');
+$router->post('/configuracion-fiscal', 'ConfiguracionFiscalController@guardar');
+
+// Reportes contables/impositivos (IVA, ARCA)
+$router->get('/reportes-contables/iva-ventas', 'ReporteContableController@ivaVentas');
+$router->get('/reportes-contables/iva-compras', 'ReporteContableController@ivaCompras');
+$router->get('/reportes-contables/posicion-iva', 'ReporteContableController@posicionIva');
+$router->post('/reportes-contables/posicion-iva/saldo-tecnico', 'ReporteContableController@guardarSaldoTecnico');
+$router->get('/reportes-contables/arca', 'ReporteContableController@arca');
+
+// Gastos / compras (módulo contable: alimenta IVA Compras y Balance)
+$router->get('/gastos', 'GastoController@index');
+$router->get('/gastos/crear', 'GastoController@crearForm');
+$router->get('/gastos/editar/{id}', 'GastoController@editarForm');
+$router->post('/gastos/guardar', 'GastoController@guardar');
+$router->post('/gastos/actualizar', 'GastoController@actualizar');
+$router->post('/gastos/eliminar', 'GastoController@eliminar');
+
 // API endpoints
 $router->get('/api/v1/disponibilidad', function() {
     $alquiler = new App\Models\Alquiler();
     header('Content-Type: application/json');
     echo json_encode($alquiler->getDisponibilidad());
 });
+
+// Asistente de ayuda (bot) — widget flotante
+$router->post('/bot/mensaje', 'BotController@mensaje');
+$router->post('/bot/feedback', 'BotController@feedback');
+$router->post('/bot/limpiar', 'BotController@limpiar');
+$router->get('/bot/admin', 'BotController@admin');
 
 $router->post('/api/v1/verificar-patente', function() {
     $patente = $_POST['patente'] ?? '';

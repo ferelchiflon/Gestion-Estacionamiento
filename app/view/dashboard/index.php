@@ -1,197 +1,157 @@
 <?php $titulo = 'Dashboard'; ?>
-<!-- Chart.js: única vista que lo usa (movido aquí desde el layout en Fase 2) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<?php
+// Cálculos de presentación (sin lógica de negocio; datos ya provistos).
+$totalPlazas  = (int)($ocupacion['total'] ?? 0);
+$ocupadas     = (int)($ocupacion['ocupadas'] ?? 0);
+$libres       = (int)($ocupacion['libres'] ?? 0);
+$pctOcupacion = $totalPlazas > 0 ? (int)round($ocupadas / $totalPlazas * 100) : 0;
+// Anillo SVG r=33 → circunferencia 207.3; el offset muestra el avance.
+$ringOffset   = number_format(207.3 * (1 - ($totalPlazas > 0 ? $ocupadas / $totalPlazas : 0)), 1, '.', '');
+$cajaTotalHoy = (float)($caja_hoy['efectivo'] ?? 0) + (float)($caja_hoy['tarjeta'] ?? 0);
+?>
 
-<div class="row">
-    <!-- Tarjetas de resumen -->
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-primary">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Lugares Ocupados</h6>
-                        <h2 class="mb-0"><?= $ocupacion['ocupadas'] ?> / <?= $ocupacion['total'] ?></h2>
-                    </div>
-                    <i class="fas fa-parking fa-2x"></i>
-                </div>
-                <small class="text-white-50"><?= $ocupacion['libres'] ?> lugares libres</small>
-            </div>
-        </div>
+<div class="head">
+    <div>
+        <h1>Panel</h1>
+        <p>Resumen del estacionamiento</p>
     </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-success">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Ingresos Hoy</h6>
-                        <h2 class="mb-0">$<?= number_format($caja_hoy['efectivo'] + $caja_hoy['tarjeta'], 2) ?></h2>
-                    </div>
-                    <i class="fas fa-dollar-sign fa-2x"></i>
-                </div>
-                <small>Efectivo: $<?= number_format($caja_hoy['efectivo'], 2) ?></small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-danger">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Clientes Morosos</h6>
-                        <h2 class="mb-0"><?= $deudores ?></h2>
-                    </div>
-                    <i class="fas fa-exclamation-triangle fa-2x"></i>
-                </div>
-                <small>Con deudas pendientes</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-info">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Alquileres Activos</h6>
-                        <h2 class="mb-0"><?= $alquileres_activos ?></h2>
-                    </div>
-                    <i class="fas fa-calendar-check fa-2x"></i>
-                </div>
-                <small>Contratos vigentes</small>
-            </div>
-        </div>
-    </div>
+    <a href="<?= BASE_URL ?>/movimientos/ingreso" class="btn btn-primary">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>Registrar ingreso
+    </a>
 </div>
+
+<!-- Indicadores: tres tarjetas de vidrio; la primera con anillo de ocupación -->
+<section class="stats" aria-label="Indicadores del día">
+    <div class="stat glass tilt">
+        <div>
+            <small>Plazas libres</small>
+            <strong><span><?= $libres ?></span> <span class="sub">/ <?= $totalPlazas ?></span></strong>
+            <em><?= $pctOcupacion ?>% de ocupación</em>
+        </div>
+        <svg class="ring" viewBox="0 0 80 80" role="img" aria-label="Ocupación actual: <?= $pctOcupacion ?>%">
+            <circle class="bg" cx="40" cy="40" r="33"/>
+            <circle class="fg" cx="40" cy="40" r="33" stroke-dasharray="207.3" stroke-dashoffset="<?= $ringOffset ?>"/>
+        </svg>
+    </div>
+    <div class="stat glass tilt">
+        <div>
+            <small>Caja de hoy</small>
+            <strong>$<?= number_format($cajaTotalHoy, 2) ?></strong>
+            <em>Efectivo $<?= number_format($caja_hoy['efectivo'] ?? 0, 2) ?> · Tarjeta $<?= number_format($caja_hoy['tarjeta'] ?? 0, 2) ?></em>
+        </div>
+    </div>
+    <div class="stat glass tilt">
+        <div>
+            <small>Alquileres activos</small>
+            <strong><?= (int)$alquileres_activos ?></strong>
+            <em>Contratos vigentes</em>
+        </div>
+    </div>
+</section>
 
 <!-- Alertas del sistema -->
 <?php if(!empty($alertas)): ?>
-    <div class="row mb-3">
-        <div class="col-12">
-            <?php foreach($alertas as $alerta): ?>
-                <div class="alert alert-<?= $alerta['tipo'] ?> alert-dismissible fade show" role="alert">
-                    <i class="fas fa-bell"></i> <?= $alerta['mensaje'] ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <?php foreach($alertas as $alerta): ?>
+        <div class="alert alert-<?= $alerta['tipo'] ?> alert-dismissible fade show" role="alert">
+            <i class="fas fa-bell me-2" aria-hidden="true"></i><?= $alerta['mensaje'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    <?php endforeach; ?>
+<?php endif; ?>
+<div class="cols">
+    <!-- Mapa de plazas: estado real desde la tabla plazas + movimientos abiertos -->
+    <section class="panel glass tilt" aria-labelledby="tPlazas">
+        <div class="ph">
+            <h2 id="tPlazas">Mapa de plazas</h2>
+            <div class="legend">
+                <span style="--c:var(--color-free)">Libre</span>
+                <span style="--c:var(--color-busy)">Ocupada</span>
+                <span style="--c:rgba(255,255,255,.58)">Mantenimiento</span>
+            </div>
+        </div>
+        <?php if (!empty($mapa_plazas)): ?>
+        <div class="plazas">
+            <?php foreach ($mapa_plazas as $plaza): ?>
+                <?php
+                $estadoPlaza   = $plaza['estado'];
+                $clasePlaza    = $estadoPlaza === 'ocupada' ? ' busy' : ($estadoPlaza === 'mantenimiento' ? ' mant' : '');
+                $etiquetaPlaza = $estadoPlaza === 'ocupada'
+                    ? ($plaza['patente'] ?? 'ocupada')
+                    : ($estadoPlaza === 'mantenimiento' ? 'mant.' : '');
+                ?>
+                <div class="plaza<?= $clasePlaza ?>" title="Plaza <?= htmlspecialchars($plaza['numero']) ?> · Sector <?= htmlspecialchars($plaza['sector']) ?> · <?= ucfirst(htmlspecialchars($estadoPlaza)) ?>">
+                    <b><?= htmlspecialchars($plaza['numero']) ?></b>
+                    <span><?= htmlspecialchars((string)$etiquetaPlaza) ?></span>
                 </div>
             <?php endforeach; ?>
         </div>
-    </div>
-<?php endif; ?>
+        <?php else: ?>
+        <div class="empty-state">
+            <div class="empty-icon"><i class="bi bi-p-square" aria-hidden="true"></i></div>
+            <h5>Sin plazas configuradas</h5>
+            <p>Carga plazas en la base de datos para ver el mapa.</p>
+        </div>
+        <?php endif; ?>
+        <p class="hint">Ocupada = movimiento sin hora de salida. El resto refleja el estado propio de cada plaza.</p>
+    </section>
 
-<div class="row">
-    <!-- Gráfico de ingresos del mes -->
-    <div class="col-md-8 mb-3">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-chart-line"></i> Ingresos Diarios - Mes Actual
-            </div>
-            <div class="card-body">
-                <canvas id="ingresosChart" height="300"></canvas>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Top de vehículos -->
-    <div class="col-md-4 mb-3">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-chart-pie"></i> Tipo de Vehículos - Este Mes
-            </div>
-            <div class="card-body">
-                <canvas id="vehiculosChart" height="250"></canvas>
-            </div>
-        </div>
-    </div>
+    <!-- Nuevo ingreso: acceso directo al formulario existente (sin duplicar lógica) -->
+    <section class="panel glass" aria-labelledby="tIngreso">
+        <div class="ph"><h2 id="tIngreso">Nuevo ingreso</h2></div>
+        <p class="text-muted">Registra la entrada de un vehículo ocasional o de alquiler. El sistema valida la patente, asigna la plaza y calcula la tarifa.</p>
+        <a href="<?= BASE_URL ?>/movimientos/ingreso" class="btn btn-primary w-100" style="min-height:50px">
+            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>Ir al formulario de ingreso
+        </a>
+        <p class="hint">El egreso y los vehículos dentro se gestionan desde Movimientos.</p>
+    </section>
 </div>
 
-<!-- Movimientos recientes -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-history"></i> Últimos Movimientos
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Patente</th>
-                                <th>Cliente</th>
-                                <th>Entrada</th>
-                                <th>Salida</th>
-                                <th>Monto</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach($movimientos_recientes as $mov): ?>
-                            <tr>
-                                <td><?= $mov['patente'] ?></td>
-                                <td><?= $mov['cliente_nombre'] ?? 'Ocasional' ?></td>
-                                <td><?= date('H:i', strtotime($mov['hora_entrada'])) ?></td>
-                                <td><?= $mov['hora_salida'] ? date('H:i', strtotime($mov['hora_salida'])) : '-' ?></td>
-                                <td>$<?= number_format($mov['monto_pagado'] ?? 0, 2) ?></td>
-                                <td>
-                                    <?php if(!$mov['hora_salida']): ?>
-                                        <span class="badge bg-warning">Activo</span>
-                                    <?php elseif($mov['estado_pago'] == 'pagado'): ?>
-                                        <span class="badge bg-success">Pagado</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-danger">Deuda</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+<!-- Últimos movimientos -->
+<section class="panel glass-strong" aria-labelledby="tMovs">
+    <div class="ph">
+        <h2 id="tMovs">Últimos movimientos</h2>
+        <a href="<?= BASE_URL ?>/movimientos/historial" class="btn btn-sm">Ver historial</a>
     </div>
-</div>
-
-<script>
-// Gráfico de ingresos
-const ctx1 = document.getElementById('ingresosChart').getContext('2d');
-new Chart(ctx1, {
-    type: 'line',
-    data: {
-        labels: [<?php foreach($ingresos_mes as $i): ?>'<?= $i['dia'] ?>',<?php endforeach; ?>],
-        datasets: [{
-            label: 'Ingresos diarios',
-            data: [<?php foreach($ingresos_mes as $i): ?><?= $i['total'] ?>,<?php endforeach; ?>],
-            borderColor: 'rgb(75, 192, 192)',
-            tension: 0.1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                ticks: {
-                    callback: function(value) {
-                        return '$' + value;
-                    }
-                }
-            }
-        }
-    }
-});
-
-// Gráfico de vehículos
-const ctx2 = document.getElementById('vehiculosChart').getContext('2d');
-const topVehiculos = <?= json_encode($top_vehiculos ?? []) ?>;
-new Chart(ctx2, {
-    type: 'pie',
-    data: {
-        labels: topVehiculos.map(v => v.tipo),
-        datasets: [{
-            data: topVehiculos.map(v => v.cantidad),
-            backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0']
-        }]
-    }
-});
-</script>
+    <?php if (!empty($movimientos_recientes)): ?>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Patente</th>
+                    <th>Cliente</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                    <th class="text-end">Monto</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach($movimientos_recientes as $mov): ?>
+                <tr>
+                    <td class="font-mono"><?= htmlspecialchars($mov['patente']) ?></td>
+                    <td><?= htmlspecialchars($mov['cliente_nombre'] ?? 'Ocasional') ?></td>
+                    <td><?= date('H:i', strtotime($mov['hora_entrada'])) ?></td>
+                    <td><?= $mov['hora_salida'] ? date('H:i', strtotime($mov['hora_salida'])) : '—' ?></td>
+                    <td class="text-end font-mono">$<?= number_format($mov['monto_pagado'] ?? 0, 2) ?></td>
+                    <td>
+                        <?php if(!$mov['hora_salida']): ?>
+                            <span class="badge bg-warning">Activo</span>
+                        <?php elseif($mov['estado_pago'] == 'pagado'): ?>
+                            <span class="badge bg-success">Pagado</span>
+                        <?php else: ?>
+                            <span class="badge bg-danger">Deuda</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php else: ?>
+    <div class="empty-state">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <h5>Sin movimientos aún</h5>
+        <p>Los ingresos y egresos recientes aparecerán acá.</p>
+    </div>
+    <?php endif; ?>
+</section>

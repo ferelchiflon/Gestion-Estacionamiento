@@ -30,27 +30,14 @@ $fechaHoy = $dias[(int)date('w')] . ', ' . date('j') . ' de ' . $meses[(int)date
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title><?= htmlspecialchars($tituloPagina) ?> · Estacionamiento</title>
+    <meta name="color-scheme" content="dark">
 
-    <!-- Anti-FOUC: aplica el tema guardado (o el del sistema) antes de pintar -->
-    <script>
-    (function () {
-        try {
-            var t = localStorage.getItem('theme');
-            if (t !== 'dark' && t !== 'light') {
-                t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-            }
-            document.documentElement.setAttribute('data-theme', t);
-        } catch (e) {
-            document.documentElement.setAttribute('data-theme', 'light');
-        }
-    })();
-    </script>
-
+    <!-- Fase 3 · UI espacial: tema ÚNICO oscuro, sin toggle ni anti-FOUC -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Font Awesome: TEMPORAL, solo mientras se migran los íconos vista por vista (se retira en Fase 5) -->
@@ -58,26 +45,15 @@ $fechaHoy = $dias[(int)date('w')] . ', ' . date('j') . ' de ' . $meses[(int)date
     <link href="<?= BASE_URL ?>/assets/css/theme.css" rel="stylesheet">
 </head>
 <body>
+<div class="sky" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
 <div class="app-shell">
-    <?php require __DIR__ . '/sidebar.php'; ?>
+    <?php require __DIR__ . '/nav.php'; ?>
 
     <div class="app-main">
         <header class="app-topbar">
-            <button type="button" class="btn btn-outline-secondary topbar-menu-btn"
-                    data-sidebar-toggle aria-controls="sidebar" aria-expanded="false"
-                    aria-label="Abrir menú de navegación">
-                <i class="bi bi-list fs-5" aria-hidden="true"></i>
-            </button>
-
             <span class="topbar-date"><?= $fechaHoy ?></span>
 
             <span class="topbar-spacer"></span>
-
-            <button type="button" class="btn btn-outline-secondary topbar-theme-btn"
-                    data-theme-toggle aria-label="Cambiar entre modo claro y oscuro"
-                    title="Modo claro / oscuro">
-                <i class="bi bi-moon-stars" data-theme-icon aria-hidden="true"></i>
-            </button>
 
             <a href="<?= BASE_URL ?>/movimientos/ingreso" class="btn btn-primary btn-sm topbar-cta">
                 <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo ingreso
@@ -109,6 +85,8 @@ $fechaHoy = $dias[(int)date('w')] . ', ' . date('j') . ' de ' . $meses[(int)date
     <?php endforeach; ?>
 </div>
 <?php endif; ?>
+
+<?php require __DIR__ . '/../bot/widget.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="<?= BASE_URL ?>/assets/js/app.js"></script>
