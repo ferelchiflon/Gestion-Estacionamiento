@@ -12,6 +12,7 @@ import {
 import { requirePageUser } from "@/lib/auth/guards";
 import { getPool } from "@/lib/db";
 import { formatMoneySign, formatFechaHora } from "@/lib/format";
+import ReciboActions from "./recibo-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export default async function ReciboPage({
   return (
     <div className="mx-auto max-w-xl space-y-6">
       {/* Botones de acción en pantalla (ocultos al imprimir) */}
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
           href="/movimientos"
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
@@ -71,14 +72,18 @@ export default async function ReciboPage({
           Volver a Movimientos
         </Link>
 
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-teal-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-800"
-        >
-          <Printer size={16} />
-          Imprimir Ticket
-        </button>
+        <div className="flex items-center gap-2">
+          <ReciboActions reciboId={reciboId} clienteEmail={recibo.cliente_email} />
+
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-teal-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-800"
+          >
+            <Printer size={16} />
+            Imprimir Ticket
+          </button>
+        </div>
       </div>
 
       {/* Ticket / Comprobante Imprimible */}
