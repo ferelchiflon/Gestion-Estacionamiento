@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Pool } from "pg";
+import { Client } from "pg";
+import { runMigrations, loadEnvLocal } from "../../scripts/migrate.js";
 import {
   calcularHorasFacturables,
   calcularMontoEstadia,
@@ -134,14 +136,33 @@ describeDb("Módulo 4 contra PostgreSQL", () => {
   let pool: Pool;
   let usuarioId: number;
   let secuencia = 0;
+  const TEST_DB = "gestion_estacionamiento_test";
 
   beforeAll(async () => {
+    // Load environment variables
+    loadEnvLocal();
+
+    // Recreate test database and apply all migrations
+    const adminClient = new Client({
+      host: process.env.PGHOST ?? "127.0.0.1",
+      port: Number(process.env.PGPORT ?? 5432),
+      user: process.env.PGADMIN_USER ?? process.env.USER,
+      database: "postgres",
+    });
+    await adminClient.connect();
+    await adminClient.query(`DROP DATABASE IF EXISTS ${TEST_DB} WITH (FORCE)`);
+    await adminClient.query(`CREATE DATABASE ${TEST_DB}`);
+    await adminClient.end();
+
+    // Run all migrations
+    await runMigrations(TEST_DB);
+
     pool = new Pool({
       host: process.env.PGHOST ?? "127.0.0.1",
       port: Number(process.env.PGPORT ?? 5432),
       user: process.env.APP_DB_USER ?? "app_estacionamiento",
       password: process.env.APP_DB_PASSWORD,
-      database: process.env.PGDATABASE ?? "gestion_estacionamiento_test",
+      database: TEST_DB,
     });
 
     const currentUser = await pool.query<{ usuario: string }>(
@@ -380,7 +401,7 @@ describeDb("Módulo 4 contra PostgreSQL", () => {
     expect(auditoria.rows[0].total).toBe(0);
   });
 
-  it("usa cero como monto cuando no existe tarifa, igual que PHP", async () => {
+  it("rechaza egreso sin tarifa vigente para el tipo de vehículo (diferencia intencional vs PHP: PHP usa 0, acá lanza error claro)", async () => {
     const plazaId = await crearPlaza("moto");
     const ingreso = await registrarIngreso(
       pool,
@@ -388,19 +409,21 @@ describeDb("Módulo 4 contra PostgreSQL", () => {
       { usuarioId },
     );
 
-    const egreso = await registrarEgreso(
-      pool,
-      {
-        movimiento_id: ingreso.movimiento.id,
-        forma_pago: "efectivo",
-        registrar_como_deuda: false,
-      },
-      { usuarioId },
-    );
-
-    expect(egreso.calculo?.montoTotalCentavos).toBe(0);
-    expect(egreso.movimiento.monto_calculado).toBe("0.00");
-    expect(egreso.recibo?.monto).toBe("0.00");
+    await expect(
+      registrarEgreso(
+        pool,
+        {
+          movimiento_id: ingreso.movimiento.id,
+          forma_pago: "efectivo",
+          registrar_como_deuda: false,
+        },
+        { usuarioId },
+      ),
+    ).rejects.toMatchObject({
+      status: 422,
+      code: "TARIFA_NO_VIGENTE",
+      message: "No hay tarifa vigente para este tipo de vehículo",
+    });
   });
 });
 

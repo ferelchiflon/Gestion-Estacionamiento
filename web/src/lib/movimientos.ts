@@ -83,7 +83,15 @@ async function tarifaVigenteEnCentavos(
     [tipoVehiculo],
   );
 
-  const centavos = resultado.rows[0]?.tarifa_hora_centavos ?? 0;
+  if (resultado.rowCount === 0) {
+    throw new ApiError(
+      422,
+      "TARIFA_NO_VIGENTE",
+      "No hay tarifa vigente para este tipo de vehículo",
+    );
+  }
+
+  const centavos = resultado.rows[0].tarifa_hora_centavos;
   if (!Number.isSafeInteger(centavos) || centavos < 0) {
     throw new Error("La tarifa vigente no es un entero válido de centavos");
   }

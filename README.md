@@ -22,9 +22,26 @@ IIBB, ARCA) y asistente de ayuda (bot).
 | `database/migrations/002_seed.sql` | Semilla: tipos_alquiler (Diario/Mensual/Anual), configuracion_fiscal id=1 vacía, 8 categorías de gasto. |
 | `database/migrations/003_roles_permisos.sql` | Rol `app_estacionamiento` con mínimo privilegio (sin DELETE ni TRUNCATE; auditoría solo SELECT/INSERT; secuencias con USAGE/SELECT; ALTER DEFAULT PRIVILEGES). |
 | `database/migrations/004_auth_usuarios.sql` | Módulo 1: `token_version` para invalidar sesiones, `eliminado_en` para borrado lógico de usuarios e índices de rol/bloqueo. |
+| `database/migrations/005_contratos_rango_semiabierto.sql` | Módulo 5 (alquileres): vigencia de contratos con rango semiabierto `'[)'` — `fecha_fin` exclusivo = día en que se libera la plaza — y CHECK `fecha_fin > fecha_inicio`. |
 
 El runner registra `version`, `checksum` (sha256 del archivo) y `applied_at` en
 `schema_migrations`, y aborta si un archivo ya aplicado cambia su checksum.
+
+### Vigencia de contratos de alquiler: rango semiabierto `'[)'`
+
+Decisión del responsable, implementada en `005_contratos_rango_semiabierto.sql`
+(no se editan migraciones ya aplicadas):
+
+- `fecha_fin` es el **día en que se libera la plaza** y es **exclusivo**: esa
+  misma fecha puede asignarse a un nuevo contrato.
+- Un contrato mensual que empieza el 01/11 y cubre todo noviembre termina el
+  **01/12**.
+- Con `'[)'`, `daterange(d, d)` sería un rango vacío (no cubriría ningún día),
+  por eso el CHECK ahora exige `fecha_fin > fecha_inicio` (antes era `>=` con
+  rango cerrado `'[]'`).
+- El EXCLUDE `exk_contratos_solapados` sigue ignorando contratos `cancelado` y
+  con borrado lógico (`eliminado_en IS NOT NULL`): solo esos pueden solaparse.
+- En la UI, la fecha de fin se etiqueta **"Hasta (día de salida)"**.
 
 ## Configuración
 

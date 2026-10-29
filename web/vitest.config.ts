@@ -13,5 +13,6 @@ export default defineConfig({
     coverage: {
       reporter: ["text", "html"],
     },
+    fileParallelism: false,
   },
 });

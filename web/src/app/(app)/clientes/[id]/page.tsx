@@ -258,7 +258,8 @@ export default async function ClienteDetailPage({
                           {con.tipo_alquiler_nombre || "-"}
                         </td>
                         <td className="p-2 text-slate-600">
-                          {formatFecha(con.fecha_inicio)} al {formatFecha(con.fecha_fin)}
+                          Desde {formatFecha(con.fecha_inicio)} — Hasta (día de salida){" "}
+                          {formatFecha(con.fecha_fin)}
                         </td>
                         <td className="p-2 text-right font-mono font-medium text-slate-800">
                           {formatMoneySign(con.cuota_mensual)}
