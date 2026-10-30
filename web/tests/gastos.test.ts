@@ -269,4 +269,61 @@ describe("Módulo Gastos/Compras", () => {
       code: "GASTO_NO_ENCONTRADO",
     });
   });
+
+  it("crearGasto con IVA > 0 y sin CUIT lanza CUIT_REQUERIDO_CON_IVA", async () => {
+    await expect(
+      crearGasto(
+        pool,
+        datosGastoUnique(2028, {
+          iva_21: "210.00",
+          cuit_proveedor: null,
+        }),
+        { usuarioId },
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "CUIT_REQUERIDO_CON_IVA",
+    });
+  });
+
+  it("crearGasto con IVA > 0 y CUIT inválido (no 11 dígitos) lanza CUIT_REQUERIDO_CON_IVA", async () => {
+    await expect(
+      crearGasto(
+        pool,
+        datosGastoUnique(2029, {
+          iva_21: "210.00",
+          cuit_proveedor: "123", // inválido
+        }),
+        { usuarioId },
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "VALIDATION_ERROR",
+    });
+  });
+
+  it("crearGasto permite IVA > 0 con CUIT válido (11 dígitos)", async () => {
+    const gasto = await crearGasto(
+      pool,
+      datosGastoUnique(2030, {
+        iva_21: "210.00",
+        cuit_proveedor: "20123456789",
+      }),
+      { usuarioId },
+    );
+    expect(gasto.cuit_proveedor).toBe("20123456789");
+  });
+
+  it("crearGasto con mismo CUIT + comprobante duplicado lanza GASTO_DUPLICADO (409)", async () => {
+    const base = { punto_venta: 10, numero_comprobante: 44444444, cuit_proveedor: "20999999999" };
+
+    await crearGasto(pool, datosGastoUnique(2031, { ...base, proveedor: "Proveedor X" }), { usuarioId });
+
+    await expect(
+      crearGasto(pool, datosGastoUnique(2031, { ...base, proveedor: "Proveedor Y" }), { usuarioId }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "GASTO_DUPLICADO",
+    });
+  });
 });

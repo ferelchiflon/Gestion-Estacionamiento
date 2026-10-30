@@ -23,6 +23,17 @@ const montoSchema = z
   .regex(/^\d+(\.\d{1,2})?$/, "Monto inválido (ej: 1234.56)")
   .transform((val) => val);
 
+function parseMonto(val: string): number {
+  return Number(val);
+}
+
+function tieneIva(data: { iva_21?: string; iva_105?: string; iva_27?: string }): boolean {
+  const iva21 = parseMonto(data.iva_21 ?? "0");
+  const iva105 = parseMonto(data.iva_105 ?? "0");
+  const iva27 = parseMonto(data.iva_27 ?? "0");
+  return iva21 + iva105 + iva27 > 0;
+}
+
 export const gastoCreateSchema = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (AAAA-MM-DD)"),
   proveedor: z.string().min(1, "Proveedor obligatorio").max(120),
@@ -45,6 +56,26 @@ export const gastoCreateSchema = z.object({
   categoria_id: z.coerce.number().int().positive().optional().nullable(),
   forma_pago: z.enum(FORMAS_PAGO).default("otro"),
   notas: z.string().max(255).optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (tieneIva(data)) {
+    const cuit = data.cuit_proveedor;
+    if (!cuit || cuit.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CUIT_REQUERIDO_CON_IVA",
+        path: ["cuit_proveedor"],
+      });
+    } else {
+      const soloDigitos = cuit.replace(/\D/g, "");
+      if (soloDigitos.length !== 11) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CUIT_REQUERIDO_CON_IVA",
+          path: ["cuit_proveedor"],
+        });
+      }
+    }
+  }
 });
 
 export type GastoCreateInput = z.infer<typeof gastoCreateSchema>;

@@ -2,7 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { auditar } from "@/lib/audit";
 import { ApiError } from "@/lib/http";
 import { centavosAPesosTexto, pesosTextoACentavos } from "@/lib/dinero";
-import type { GastoActor } from "@/lib/validations/gastos";
+import { gastoCreateSchema, type GastoActor } from "@/lib/validations/gastos";
 
 export type GastoFila = {
   id: number;
@@ -117,6 +117,16 @@ export async function crearGasto(
   },
   actor: GastoActor,
 ): Promise<GastoFila> {
+  // Validar con schema (incluye refinamiento CUIT_REQUERIDO_CON_IVA)
+  const parsed = gastoCreateSchema.safeParse(datos);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    if (issue.message === "CUIT_REQUERIDO_CON_IVA") {
+      throw new ApiError(400, "CUIT_REQUERIDO_CON_IVA", "CUIT del proveedor requerido cuando hay IVA");
+    }
+    throw new ApiError(400, "VALIDATION_ERROR", "Datos inválidos", parsed.error.issues);
+  }
+
   const totalCentavos = sumarComponentesEnCentavos(
     datos.neto_gravado,
     datos.iva_21,
