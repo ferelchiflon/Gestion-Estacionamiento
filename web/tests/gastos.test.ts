@@ -9,7 +9,7 @@ import {
   obtenerGasto,
 } from "../src/lib/gastos";
 import { pesosTextoACentavos, centavosAPesosTexto } from "../src/lib/dinero";
-import { can, type Rol } from "../src/lib/permissions";
+import { can, type Permiso, type Rol } from "../src/lib/permissions";
 
 let pool: Pool;
 let usuarioId: number;
@@ -332,9 +332,9 @@ describe("Módulo Gastos/Compras", () => {
 // --- Tests de matriz de permisos (usando lib/permissions.ts y lógica de guards) ---
 describe("Matriz de permisos Gastos (fiscal.read / fiscal.write + roles)", () => {
   // Simula la lógica de requireApiUser: role check + permission check
-  function checkAccess(rol: Rol, allowedRoles: readonly Rol[], permission: string): boolean {
+  function checkAccess(rol: Rol, allowedRoles: readonly Rol[], permission: Permiso): boolean {
     if (!allowedRoles.includes(rol)) return false;
-    return can(rol, permission as any);
+    return can(rol, permission);
   }
 
   const GASTOS_GET_ROLES = ["admin", "operador", "contador"] as const;

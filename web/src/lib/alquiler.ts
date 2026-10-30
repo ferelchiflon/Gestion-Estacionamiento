@@ -76,6 +76,20 @@ export type PagoPendiente = {
   dias_retraso: number;
 };
 
+export type TipoAlquilerFila = {
+  id: number;
+  nombre: string;
+};
+
+export type PagoHistorialFila = PagoAlquilerFila & {
+  plaza_numero: string;
+  plaza_sector: string;
+  cliente_nombre: string;
+  forma_pago: string | null;
+  recibo_numero: number | null;
+  recibo_enviado_email: boolean | null;
+};
+
 async function enTransaccion<T>(
   pool: Pool,
   operacion: (client: PoolClient) => Promise<T>,
@@ -298,8 +312,55 @@ export async function registrarPago(
       ip: actor.ip,
     });
 
+    const pagoActualizado = await client.query<{ recibo_id: number | null }>(
+      `UPDATE pagos_alquiler SET recibo_id = $1 WHERE id = $2 RETURNING recibo_id`,
+      [recibo.id, pago.id]
+    );
+    pago.recibo_id = pagoActualizado.rows[0]?.recibo_id ?? null;
+
     return { pago, recibo };
   });
+}
+
+export async function getTiposAlquiler(pool: Pool): Promise<TipoAlquilerFila[]> {
+  const resultado = await pool.query<TipoAlquilerFila>(
+    `SELECT id, nombre FROM tipos_alquiler ORDER BY id`
+  );
+
+  return resultado.rows;
+}
+
+export async function listPagos(
+  pool: Pool,
+  limit = 50,
+): Promise<PagoHistorialFila[]> {
+  const resultado = await pool.query<PagoHistorialFila>(
+    `SELECT
+        pa.id,
+        pa.contrato_id,
+        pa.periodo,
+        pa.monto::text as monto,
+        pa.fecha_pago,
+        pa.recibo_id,
+        pa.estado,
+        p.numero as plaza_numero,
+        p.sector as plaza_sector,
+        c.nombre as cliente_nombre,
+        r.forma_pago,
+        r.numero as recibo_numero,
+        r.enviado_email as recibo_enviado_email
+      FROM pagos_alquiler pa
+      JOIN contratos_alquiler ca ON pa.contrato_id = ca.id
+      JOIN plazas p ON ca.plaza_id = p.id
+      JOIN clientes c ON ca.cliente_id = c.id
+      LEFT JOIN recibos r ON r.id = pa.recibo_id
+      WHERE pa.eliminado_en IS NULL
+      ORDER BY pa.fecha_pago DESC, pa.id DESC
+      LIMIT $1`,
+    [limit]
+  );
+
+  return resultado.rows;
 }
 
 export async function listContratos(

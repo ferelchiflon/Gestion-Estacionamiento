@@ -9,6 +9,7 @@ import {
   SquareParking,
   DollarSign,
   ArrowRightLeft,
+  KeyRound,
 } from "lucide-react";
 import LogoutButton from "@/components/logout-button";
 import { requirePageUser } from "@/lib/auth/guards";
@@ -39,6 +40,38 @@ export default async function AppLayout({
               <ArrowRightLeft size={16} />
               <span>Operaciones</span>
             </Link>
+
+            <div className="relative group">
+              <Link
+                href="/alquileres/contratos"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                <KeyRound size={16} />
+                <span className="hidden md:inline">Alquileres</span>
+              </Link>
+              <div className="invisible absolute left-0 top-full z-50 w-48 pt-1 opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                  <Link
+                    href="/alquileres/contratos"
+                    className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Contratos
+                  </Link>
+                  <Link
+                    href="/alquileres/pagos"
+                    className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Pagos
+                  </Link>
+                  <Link
+                    href="/alquileres/disponibilidad"
+                    className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Disponibilidad
+                  </Link>
+                </div>
+              </div>
+            </div>
 
             <Link
               href="/dashboard"

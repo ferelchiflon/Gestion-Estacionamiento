@@ -1,18 +1,21 @@
 import { NextRequest } from "next/server";
 import { requireApiUser } from "@/lib/auth/guards";
 import { getPool } from "@/lib/db";
-import { getPagosPendientes, registrarPago } from "@/lib/alquiler";
+import { getPagosPendientes, listPagos, registrarPago } from "@/lib/alquiler";
 import { errorResponse, clientIp } from "@/lib/http";
 import { registrarPagoSchema } from "@/lib/validations/alquiler";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     await requireApiUser(["admin", "operador", "contador"], "operaciones.read");
 
     const pool = getPool();
-    const pendientes = await getPagosPendientes(pool);
+    const [pendientes, historial] = await Promise.all([
+      getPagosPendientes(pool),
+      listPagos(pool),
+    ]);
 
-    return Response.json({ data: pendientes });
+    return Response.json({ data: pendientes, historial });
   } catch (error) {
     return errorResponse(error);
   }
