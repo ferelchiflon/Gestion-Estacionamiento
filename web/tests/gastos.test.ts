@@ -9,6 +9,7 @@ import {
   obtenerGasto,
 } from "../src/lib/gastos";
 import { pesosTextoACentavos, centavosAPesosTexto } from "../src/lib/dinero";
+import { can, type Rol } from "../src/lib/permissions";
 
 let pool: Pool;
 let usuarioId: number;
@@ -325,5 +326,68 @@ describe("Módulo Gastos/Compras", () => {
       status: 409,
       code: "GASTO_DUPLICADO",
     });
+  });
+});
+
+// --- Tests de matriz de permisos (usando lib/permissions.ts y lógica de guards) ---
+describe("Matriz de permisos Gastos (fiscal.read / fiscal.write + roles)", () => {
+  // Simula la lógica de requireApiUser: role check + permission check
+  function checkAccess(rol: Rol, allowedRoles: readonly Rol[], permission: string): boolean {
+    if (!allowedRoles.includes(rol)) return false;
+    return can(rol, permission as any);
+  }
+
+  const GASTOS_GET_ROLES = ["admin", "operador", "contador"] as const;
+  const GASTOS_POST_ROLES = ["admin", "operador", "contador"] as const;
+  const GASTOS_DELETE_ROLES = ["admin"] as const;
+  const FISCAL_READ = "fiscal.read";
+  const FISCAL_WRITE = "fiscal.write";
+
+  it("operador: GET /api/gastos → 403 (no tiene fiscal.read)", () => {
+    const hasAccess = checkAccess("operador", GASTOS_GET_ROLES, FISCAL_READ);
+    expect(hasAccess).toBe(false);
+  });
+
+  it("operador: POST /api/gastos → 403 (no tiene fiscal.write)", () => {
+    const hasAccess = checkAccess("operador", GASTOS_POST_ROLES, FISCAL_WRITE);
+    expect(hasAccess).toBe(false);
+  });
+
+  it("contador: GET /api/gastos → 200 (tiene fiscal.read)", () => {
+    const hasAccess = checkAccess("contador", GASTOS_GET_ROLES, FISCAL_READ);
+    expect(hasAccess).toBe(true);
+  });
+
+  it("contador: POST /api/gastos → 200 (tiene fiscal.write)", () => {
+    const hasAccess = checkAccess("contador", GASTOS_POST_ROLES, FISCAL_WRITE);
+    expect(hasAccess).toBe(true);
+  });
+
+  it("operador: DELETE /api/gastos → 403 (rol no permitido)", () => {
+    const hasAccess = checkAccess("operador", GASTOS_DELETE_ROLES, FISCAL_WRITE);
+    expect(hasAccess).toBe(false);
+  });
+
+  it("contador: DELETE /api/gastos → 403 (rol no permitido, solo admin)", () => {
+    const hasAccess = checkAccess("contador", GASTOS_DELETE_ROLES, FISCAL_WRITE);
+    expect(hasAccess).toBe(false);
+  });
+
+  it("admin: DELETE /api/gastos → 200 (rol admin + fiscal.write)", () => {
+    const hasAccess = checkAccess("admin", GASTOS_DELETE_ROLES, FISCAL_WRITE);
+    expect(hasAccess).toBe(true);
+  });
+
+  // Verificación directa de la matriz de permissions.ts
+  it("permissions.ts: fiscal.read solo para admin y contador", () => {
+    expect(can("admin", "fiscal.read")).toBe(true);
+    expect(can("contador", "fiscal.read")).toBe(true);
+    expect(can("operador", "fiscal.read")).toBe(false);
+  });
+
+  it("permissions.ts: fiscal.write solo para admin y contador", () => {
+    expect(can("admin", "fiscal.write")).toBe(true);
+    expect(can("contador", "fiscal.write")).toBe(true);
+    expect(can("operador", "fiscal.write")).toBe(false);
   });
 });
