@@ -74,7 +74,7 @@ describe("Módulo Gastos/Compras", () => {
     return {
       fecha: "2026-10-15",
       proveedor: "Proveedor Test SA",
-      cuit_proveedor: "20-12345678-9",
+      cuit_proveedor: "20123456789",
       tipo_comprobante: "Factura A",
       punto_venta: 1,
       numero_comprobante: Math.floor(Math.random() * 99999999),
@@ -149,11 +149,11 @@ describe("Módulo Gastos/Compras", () => {
     });
   });
 
-  it("crearGasto permite mismo comprobante si cambió el proveedor", async () => {
+  it("crearGasto permite mismo comprobante si cambió el proveedor (y CUIT)", async () => {
     const base = { punto_venta: 8, numero_comprobante: 22222222 };
 
-    const a = await crearGasto(pool, datosGastoUnique(2025, { ...base, proveedor: "Proveedor A" }), { usuarioId });
-    const b = await crearGasto(pool, datosGastoUnique(2025, { ...base, proveedor: "Proveedor B" }), { usuarioId });
+    const a = await crearGasto(pool, datosGastoUnique(2025, { ...base, proveedor: "Proveedor A", cuit_proveedor: "20111111111" }), { usuarioId });
+    const b = await crearGasto(pool, datosGastoUnique(2025, { ...base, proveedor: "Proveedor B", cuit_proveedor: "20222222222" }), { usuarioId });
 
     expect(a.id).not.toBe(b.id);
   });

@@ -79,12 +79,19 @@ function sumarComponentesEnCentavos(
   );
 }
 
+/** Normaliza CUIT: quita guiones y deja solo 11 dígitos. */
+function normalizarCuit(cuit: string | null | undefined): string | null {
+  if (!cuit) return null;
+  const soloDigitos = cuit.replace(/\D/g, "");
+  return soloDigitos.length === 11 ? soloDigitos : null;
+}
+
 /** Traduce la violación del índice único de comprobante (23505) a GASTO_DUPLICADO 409. */
 function esViolacionComprobanteUnico(error: unknown): boolean {
   const pgError = error as { code?: string; constraint?: string };
   return (
     pgError?.code === "23505" &&
-    pgError?.constraint === "uq_gastos_compras_comprobante"
+    pgError?.constraint === "uq_gastos_compras_cuit_comprobante"
   );
 }
 
@@ -121,6 +128,9 @@ export async function crearGasto(
   );
   const total = centavosAPesosTexto(totalCentavos);
 
+  // Normalizar CUIT a 11 dígitos (sin guiones) para el índice único
+  const cuitNormalizado = normalizarCuit(datos.cuit_proveedor);
+
   return enTransaccion(pool, async (client) => {
     let res;
     try {
@@ -138,7 +148,7 @@ export async function crearGasto(
         [
           datos.fecha,
           datos.proveedor,
-          datos.cuit_proveedor,
+          cuitNormalizado,
           datos.tipo_comprobante,
           datos.punto_venta,
           datos.numero_comprobante,
@@ -359,6 +369,9 @@ export async function actualizarGasto(
   );
   const total = centavosAPesosTexto(totalCentavos);
 
+  // Normalizar CUIT a 11 dígitos (sin guiones) para el índice único
+  const cuitNormalizado = normalizarCuit(datos.cuit_proveedor);
+
   return enTransaccion(pool, async (client) => {
     const anteriorRes = await client.query<GastoFila>(
       `SELECT * FROM gastos_compras WHERE id = $1 AND eliminado_en IS NULL`,
@@ -387,7 +400,7 @@ export async function actualizarGasto(
       [
         datos.fecha,
         datos.proveedor,
-        datos.cuit_proveedor,
+        cuitNormalizado,
         datos.tipo_comprobante,
         datos.punto_venta,
         datos.numero_comprobante,
