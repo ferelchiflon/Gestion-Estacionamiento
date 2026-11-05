@@ -1,26 +1,11 @@
 /**
- * Test setup - Ejecutado antes de todos los tests.
- * Valida que las pruebas NO toquen la base real.
+ * setupFiles de vitest: corre al inicio de CADA worker.
+ *
+ * Nota: la guardia de PGDATABASE del shell está en global-setup.ts (se ejecuta
+ * antes de que .env.local contamine el env). La guardia por CONEXIÓN está en
+ * db-setup.ts (assertTestDatabase) y en cada conexión (TEST_DB hardcodeado).
+ *
+ * Este archivo queda como punto de extensión para checks por-worker.
  */
-
-import { beforeAll, afterAll } from 'vitest';
-
-beforeAll(() => {
-  // Validar variable de entorno PGDATABASE si está definida
-  const pgDatabase = process.env.PGDATABASE;
-  if (pgDatabase && !pgDatabase.endsWith('_test')) {
-    throw new Error(
-      `SEGURIDAD: PGDATABASE="${pgDatabase}" no termina en '_test'.\n` +
-      `Los tests deben ejecutarse solo contra bases de test (ej: gestion_estacionamiento_test).`
-    );
-  }
-  
-  // Validar que no estemos conectados a la base real
-  // Esta validación se hace en cada test al conectar
-});
-
-afterAll(() => {
-  // Cleanup si es necesario
-});
 
 export {};

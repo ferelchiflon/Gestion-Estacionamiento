@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Pool } from 'pg';
-import { loadEnvLocal, assertTestDatabase } from '../../scripts/migrate.js';
+import { ensureTestDatabase, resetearDatosTest, assertTestDatabase } from './db-setup.js';
 import { armarCsv, csvResponse } from '@/lib/csv';
 import { listarGastos } from '@/lib/gastos';
 
@@ -44,7 +44,8 @@ async function insertGasto(opts: {
 
 describe('GASTOS: Permisos y anti-duplicado', () => {
   beforeAll(async () => {
-    loadEnvLocal();
+    await ensureTestDatabase();
+    await resetearDatosTest();
     assertTestDatabase(TEST_DB);
 
     adminPool = new Pool({

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Pool } from "pg";
-import { Client } from "pg";
-import { runMigrations, loadEnvLocal } from "../../scripts/migrate.js";
+
+import { ensureTestDatabase, resetearDatosTest } from "./db-setup.js";
 
 /**
  * Regla decidida: vigencia de contratos con rango semiabierto '[)'.
@@ -23,22 +23,11 @@ describeDb("Contratos: rango semiabierto '[)' (exk_contratos_solapados)", () => 
 
   beforeAll(async () => {
     // Load environment variables
-    loadEnvLocal();
 
-    // Recreate test database and apply all migrations
-    const adminClient = new Client({
-      host: process.env.PGHOST ?? "127.0.0.1",
-      port: Number(process.env.PGPORT ?? 5432),
-      user: process.env.PGADMIN_USER ?? process.env.USER,
-      database: "postgres",
-    });
-    await adminClient.connect();
-    await adminClient.query(`DROP DATABASE IF EXISTS ${TEST_DB} WITH (FORCE)`);
-    await adminClient.query(`CREATE DATABASE ${TEST_DB}`);
-    await adminClient.end();
 
-    // Run all migrations
-    await runMigrations(TEST_DB);
+    // Setup compartido: garantiza base de test al dia (idempotente)
+    await ensureTestDatabase();
+    await resetearDatosTest();
 
     pool = new Pool({
       host: process.env.PGHOST ?? "127.0.0.1",

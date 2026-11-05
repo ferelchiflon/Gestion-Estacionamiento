@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { Pool, Client } from 'pg';
-import { runMigrations, loadEnvLocal, assertTestDatabase } from '../../scripts/migrate.js';
+import { Pool } from 'pg';
+import { ensureTestDatabase, resetearDatosTest } from './db-setup.js';
 import bcrypt from 'bcryptjs';
 
 const TEST_DB = 'gestion_estacionamiento_test';
@@ -17,21 +17,11 @@ let operatorUserId: number;
 
 describe('Auth: Reset de contraseña y cambio propio', () => {
   beforeAll(async () => {
-    loadEnvLocal();
-    assertTestDatabase(TEST_DB);
     
-    const adminClient = new Client({
-      host: process.env.PGHOST ?? '127.0.0.1',
-      port: Number(process.env.PGPORT ?? 5432),
-      user: process.env.PGADMIN_USER ?? process.env.USER,
-      database: 'postgres',
-    });
-    await adminClient.connect();
-    await adminClient.query(`DROP DATABASE IF EXISTS ${TEST_DB} WITH (FORCE)`);
-    await adminClient.query(`CREATE DATABASE ${TEST_DB}`);
-    await adminClient.end();
 
-    await runMigrations(TEST_DB);
+    // Setup compartido: garantiza base de test al dia (idempotente)
+    await ensureTestDatabase();
+    await resetearDatosTest();
 
     adminPool = new Pool({
       host: process.env.PGHOST ?? '127.0.0.1',

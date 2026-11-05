@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Pool } from 'pg';
-import { loadEnvLocal, assertTestDatabase } from '../../scripts/migrate.js';
+import { ensureTestDatabase, resetearDatosTest, assertTestDatabase } from './db-setup.js';
 import bcrypt from 'bcryptjs';
 
 const TEST_DB = 'gestion_estacionamiento_test';
@@ -16,7 +16,8 @@ let operatorUserId: number;
 
 describe('Permisos por rol en /usuarios y /mi-cuenta/clave', () => {
   beforeAll(async () => {
-    loadEnvLocal();
+    await ensureTestDatabase();
+    await resetearDatosTest();
     assertTestDatabase(TEST_DB);
 
     adminPool = new Pool({
