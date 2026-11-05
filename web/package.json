@@ -11,7 +11,11 @@
     "test:watch": "vitest",
     "test:db:module1": "node ../scripts/test-module1.mjs",
     "test:db:module4": "node ../scripts/test-module4.mjs",
-    "user:create": "node scripts/create-admin.mjs"
+    "user:create": "node scripts/create-admin.mjs",
+    "user:reset": "node scripts/reset-password.mjs",
+    "user:unlock": "node scripts/reset-password.mjs",
+    "user:create-admin": "node scripts/reset-password.mjs",
+    "user:list": "node scripts/reset-password.mjs"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
