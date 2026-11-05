@@ -238,7 +238,7 @@ export async function DELETE(
     const usuario = await withTransaction(async (client) => {
       const anterior = (
         await client.query<Usuario>(
-          `SELECT id,nombre,email,rol,activo,token_version FROM usuarios
+          `SELECT id,nombre,email,rol,activo,token_version,debe_cambiar_password FROM usuarios
             WHERE id=$1 AND eliminado_en IS NULL FOR UPDATE`,
           [id],
         )

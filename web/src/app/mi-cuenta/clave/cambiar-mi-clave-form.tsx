@@ -27,7 +27,8 @@ export default function CambiarMiClaveForm() {
     if (common.includes(password.toLowerCase())) return "La contraseña es demasiado común, elija otra";
     return null;
   }
-async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
