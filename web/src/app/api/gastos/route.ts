@@ -18,13 +18,17 @@ export async function GET(request: NextRequest) {
     }
 
     const pool = getPool();
-    const [dataResult, totales] = await Promise.all([
-      listarGastos(pool, { ...parsed.data, limit: parsed.data.limit, offset: (parsed.data.page - 1) * parsed.data.limit }),
-      totalesGastos(pool, parsed.data),
-    ]);
-
     // Export CSV del listado filtrado (referencia interna, no formato oficial).
+    // Ignora paginación: exporta todas las filas que matchean los filtros (tope 10.000).
     if (searchParams.export === "csv") {
+      const [csvResult] = await Promise.all([
+        listarGastos(pool, {
+          ...parsed.data,
+          limit: 10000,
+          offset: 0,
+        }),
+      ]);
+
       return csvResponse(
         `gastos_${new Date().toISOString().slice(0, 10)}.csv`,
         [
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
           "Forma de pago",
           "Notas",
         ],
-        dataResult.data.map((g) => [
+        csvResult.data.map((g) => [
           new Date(g.fecha).toISOString().slice(0, 10),
           g.proveedor,
           g.cuit_proveedor ?? "",
@@ -67,6 +71,11 @@ export async function GET(request: NextRequest) {
         ]),
       );
     }
+
+    const [dataResult, totales] = await Promise.all([
+      listarGastos(pool, { ...parsed.data, limit: parsed.data.limit, offset: (parsed.data.page - 1) * parsed.data.limit }),
+      totalesGastos(pool, parsed.data),
+    ]);
 
     return Response.json({
       data: dataResult.data,

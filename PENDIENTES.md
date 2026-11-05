@@ -7,8 +7,8 @@ Estos puntos quedan explícitamente sin resolver y no deben avanzarse sin decisi
 - [ ] **Infraestructura local:** revisar/endurecer `pg_hba.conf` (actualmente Postgres.app usa `trust` para conexiones locales).
 - [ ] **Gastos:** definir tolerancia de centavos en la validación de totales/IVA (por ejemplo aceptar diferencias de $0,01).
 - [x] **Módulo 4 - Tarifa inexistente:** PHP usa tarifa 0 silenciosamente (`$tarifa['tarifa_hora'] ?? 0` en `app/models/Movimiento.php:36`). En TypeScript se lanza error claro `TARIFA_NO_VIGENTE` (422) con mensaje "No hay tarifa vigente para este tipo de vehículo" (`src/lib/movimientos.ts:86-92`). Test en `tests/modulo4.test.ts:383`.
-- [ ] **Gastos:** exportar CSV de gastos no implementado aún.
-- [ ] **Tests:** setup compartido entre archivos de test (evitar correr migraciones 8 veces; evaluar isolate: false).
+- [x] **Gastos:** exportar CSV de gastos. → **HECHO (5/11/2026): `GET /api/gastos?export=csv` (referencia interna, separador ";", BOM UTF-8, exporta todas las filas filtradas ignorando paginación, tope 10.000) + botón "Exportar CSV" en `/gastos`. Tests en `tests/gastos-permisos.test.ts`.**
+- [x] **Tests:** setup compartido entre archivos de test. → **PARCIAL (5/11/2026): guardia de seguridad en `tests/setup.ts` + `assertTestDatabase()` en `scripts/migrate.js` (bloquea cualquier conexión que no termine en `_test`). Los archivos de test aún corren migraciones propias; consolidar setup compartido pendiente.**
 
 ---
 
