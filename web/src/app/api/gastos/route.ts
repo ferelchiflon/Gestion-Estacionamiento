@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireApiUser } from "@/lib/auth/guards";
 import { getPool } from "@/lib/db";
 import { crearGasto, listarGastos, totalesGastos } from "@/lib/gastos";
+import { csvResponse } from "@/lib/csv";
 import { errorResponse, ApiError, clientIp } from "@/lib/http";
 import { gastoCreateSchema, gastoQuerySchema } from "@/lib/validations/gastos";
 
@@ -21,6 +22,51 @@ export async function GET(request: NextRequest) {
       listarGastos(pool, { ...parsed.data, limit: parsed.data.limit, offset: (parsed.data.page - 1) * parsed.data.limit }),
       totalesGastos(pool, parsed.data),
     ]);
+
+    // Export CSV del listado filtrado (referencia interna, no formato oficial).
+    if (searchParams.export === "csv") {
+      return csvResponse(
+        `gastos_${new Date().toISOString().slice(0, 10)}.csv`,
+        [
+          "Fecha",
+          "Proveedor",
+          "CUIT",
+          "Tipo comprobante",
+          "Punto venta",
+          "Número",
+          "Neto gravado",
+          "IVA 21",
+          "IVA 10,5",
+          "IVA 27",
+          "No gravado",
+          "Percepción IVA",
+          "Percepción IIBB",
+          "Total",
+          "Categoría",
+          "Forma de pago",
+          "Notas",
+        ],
+        dataResult.data.map((g) => [
+          new Date(g.fecha).toISOString().slice(0, 10),
+          g.proveedor,
+          g.cuit_proveedor ?? "",
+          g.tipo_comprobante,
+          g.punto_venta ?? "",
+          g.numero_comprobante ?? "",
+          g.neto_gravado,
+          g.iva_21,
+          g.iva_105,
+          g.iva_27,
+          g.no_gravado,
+          g.percepcion_iva,
+          g.percepcion_iibb,
+          g.total,
+          g.categoria_nombre ?? "",
+          g.forma_pago ?? "",
+          g.notas ?? "",
+        ]),
+      );
+    }
 
     return Response.json({
       data: dataResult.data,

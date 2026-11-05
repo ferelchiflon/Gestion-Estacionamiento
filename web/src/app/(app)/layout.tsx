@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   CarFront,
+  Calculator,
   LayoutDashboard,
   ShieldCheck,
   Users,
@@ -112,6 +113,16 @@ export default async function AppLayout({
               <DollarSign size={16} />
               <span className="hidden lg:inline">Tarifas</span>
             </Link>
+
+            {can(user.rol, "fiscal.read") ? (
+              <Link
+                href="/contable"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                <Calculator size={16} />
+                <span className="hidden lg:inline">Contable</span>
+              </Link>
+            ) : null}
 
             {can(user.rol, "usuarios.manage") ? (
               <Link

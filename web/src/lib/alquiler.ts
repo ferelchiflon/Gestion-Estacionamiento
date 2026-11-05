@@ -274,25 +274,9 @@ export async function registrarPago(
     const montoCentavos = pesosTextoACentavos(datos.monto);
     const montoPesos = centavosAPesosTexto(montoCentavos);
 
-    const pagoRes = await client.query<PagoAlquilerFila>(
-      `INSERT INTO pagos_alquiler
-         (contrato_id, periodo, monto, fecha_pago, estado)
-       VALUES ($1, $2, $3::numeric, now(), 'pagado')
-       RETURNING *`,
-      [datos.contrato_id, datos.periodo, montoPesos],
-    );
-
-    const pago = pagoRes.rows[0];
-
-    await auditar(client, {
-      usuarioId: actor.usuarioId,
-      accion: "INSERT",
-      tabla: "pagos_alquiler",
-      registroId: pago.id,
-      despues: pago,
-      ip: actor.ip,
-    });
-
+    // El recibo se emite PRIMERO: desde la migración 009 el pago de alquiler
+    // debe referenciar su recibo (recibo_id NOT NULL), así que no se puede
+    // insertar el pago y vincularlo después (bug que arrastraba el PHP).
     const reciboRes = await client.query<ReciboAlquilerFila>(
       `INSERT INTO recibos
          (contrato_id, cliente_id, monto, forma_pago, fecha_emision)
@@ -312,11 +296,24 @@ export async function registrarPago(
       ip: actor.ip,
     });
 
-    const pagoActualizado = await client.query<{ recibo_id: number | null }>(
-      `UPDATE pagos_alquiler SET recibo_id = $1 WHERE id = $2 RETURNING recibo_id`,
-      [recibo.id, pago.id]
+    const pagoRes = await client.query<PagoAlquilerFila>(
+      `INSERT INTO pagos_alquiler
+         (contrato_id, periodo, monto, fecha_pago, recibo_id, estado)
+       VALUES ($1, $2, $3::numeric, now(), $4, 'pagado')
+       RETURNING *`,
+      [datos.contrato_id, datos.periodo, montoPesos, recibo.id],
     );
-    pago.recibo_id = pagoActualizado.rows[0]?.recibo_id ?? null;
+
+    const pago = pagoRes.rows[0];
+
+    await auditar(client, {
+      usuarioId: actor.usuarioId,
+      accion: "INSERT",
+      tabla: "pagos_alquiler",
+      registroId: pago.id,
+      despues: pago,
+      ip: actor.ip,
+    });
 
     return { pago, recibo };
   });
