@@ -93,6 +93,15 @@ export default function LoginForm() {
         </p>
       ) : null}
 
+      <div className="text-right">
+        <a
+          href="/resetear-clave"
+          className="text-sm text-teal-700 hover:text-teal-800 hover:underline"
+        >
+          ¿Olvidé mi contraseña?
+        </a>
+      </div>
+
       <button
         type="submit"
         disabled={loading}
