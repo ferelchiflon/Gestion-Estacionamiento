@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 
 export default function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +26,11 @@ export default function LoginForm() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        // Si debe cambiar contraseña, redirigir a página de cambio con datos del usuario
+        if (data?.code === "PASSWORD_CHANGE_REQUIRED" && data?.user) {
+          router.push(`/cambiar-clave?email=${encodeURIComponent(data.user.email)}`);
+          return;
+        }
         setError(data?.error ?? "No se pudo iniciar sesión");
         return;
       }

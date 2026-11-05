@@ -8,7 +8,7 @@ export default async function UsuariosPage() {
   const current = await requirePageUser(["admin"], "usuarios.manage");
 
   const rows = await query<ManagedUser>(
-    `SELECT id, nombre, email, rol, activo, creado_en, actualizado_en
+    `SELECT id, nombre, email, rol, activo, creado_en, actualizado_en, debe_cambiar_password
        FROM usuarios
       WHERE eliminado_en IS NULL
       ORDER BY nombre, id`,

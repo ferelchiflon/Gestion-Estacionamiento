@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Loader2, Trash2, UserPlus } from "lucide-react";
+import { Loader2, Trash2, UserPlus, Key, X } from "lucide-react";
 import { ROLES, type Rol } from "@/lib/permissions";
 
 export type ManagedUser = {
@@ -13,6 +13,7 @@ export type ManagedUser = {
   activo: boolean;
   creado_en: string | Date;
   actualizado_en: string | Date;
+  debe_cambiar_password?: boolean;
 };
 
 const inputClass =
@@ -44,6 +45,12 @@ export default function UsersManager({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Modal para mostrar contraseña temporal
+  const [tempPasswordModal, setTempPasswordModal] = useState<{
+    open: boolean;
+    password: string;
+    userName: string;
+  } | null>(null);
 
   async function request(url: string, method: string, body?: unknown) {
     setSaving(true);
@@ -98,6 +105,30 @@ export default function UsersManager({
     router.refresh();
   }
 
+  async function resetUserPassword(user: ManagedUser) {
+    if (
+      !window.confirm(
+        `¿Resetear contraseña de ${user.nombre}? Se generará una contraseña temporal que deberás comunicarle al usuario (solo se muestra una vez).`,
+      )
+    )
+      return;
+    const result = await request(`/api/usuarios/${user.id}`, "PATCH", {
+      action: "reset_password",
+    });
+    if (!result) return;
+    // Mostrar modal con la contraseña temporal
+    setTempPasswordModal({
+      open: true,
+      password: result.tempPassword,
+      userName: user.nombre,
+    });
+    setUsers((current) =>
+      current.map((u) => (u.id === user.id ? { ...u, ...result.usuario } : u)),
+    );
+    setMessage(result.message);
+    router.refresh();
+  }
+
   async function deleteUser(user: ManagedUser) {
     if (!window.confirm(`¿Eliminar lógicamente a ${user.nombre}?`)) return;
     const result = await request(`/api/usuarios/${user.id}`, "DELETE");
@@ -107,8 +138,18 @@ export default function UsersManager({
     router.refresh();
   }
 
+  function closeTempPasswordModal() {
+    setTempPasswordModal(null);
+  }
+
+  function copyTempPassword(password: string) {
+    navigator.clipboard.writeText(password);
+    setMessage("Contraseña copiada al portapapeles");
+  }
+
   return (
-    <section className="space-y-6">
+    <>
+      <section className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Usuarios y roles</h1>
         <p className="text-slate-600">
@@ -266,6 +307,15 @@ export default function UsersManager({
                     <button
                       type="button"
                       disabled={saving || user.id === currentUserId}
+                      onClick={() => resetUserPassword(user)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-3 py-1 text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                    >
+                      <Key size={14} />
+                      Resetear clave
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || user.id === currentUserId}
                       onClick={() =>
                         updateUser(user.id, { activo: !user.activo })
                       }
@@ -290,5 +340,64 @@ export default function UsersManager({
         </table>
       </div>
     </section>
-  );
+
+      {tempPasswordModal && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        onClick={closeTempPasswordModal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="temp-password-title"
+      >
+        <div
+          className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 id="temp-password-title" className="text-lg font-semibold text-slate-900">
+              Contraseña temporal generada
+            </h3>
+            <button
+              onClick={closeTempPasswordModal}
+              className="rounded-lg p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              aria-label="Cerrar"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Se ha reseteado la contraseña de <strong>{tempPasswordModal.userName}</strong>.
+              La contraseña temporal es:
+            </p>
+            <div className="relative">
+              <code
+                className="block w-full rounded-lg bg-slate-100 px-4 py-3 font-mono text-lg text-slate-900 break-all select-all"
+                id="temp-password-display"
+              >
+                {tempPasswordModal.password}
+              </code>
+              <button
+                onClick={() => copyTempPassword(tempPasswordModal.password)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50"
+              >
+                Copiar
+              </button>
+            </div>
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-3">
+              <strong>Importante:</strong> Esta contraseña solo se muestra una vez. Comuníquesela
+              al usuario de forma segura. El usuario deberá cambiarla en su primer ingreso.
+            </p>
+            <button
+              onClick={closeTempPasswordModal}
+              className="w-full rounded-lg bg-teal-700 px-4 py-2 font-semibold text-white hover:bg-teal-800"
+            >
+              Entendido, he copiado la contraseña
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+);
 }

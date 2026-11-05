@@ -6,6 +6,8 @@ import type { PoolClient } from "pg";
 import { withTransaction } from "@/lib/db";
 import { ApiError, assertSameOrigin, clientIp, errorResponse } from "@/lib/http";
 import { userIdSchema, userUpdateSchema } from "@/lib/validation";
+import { randomBytes } from "node:crypto";
+import { z } from "zod";
 
 type Rol = "admin" | "operador" | "contador";
 type Usuario = {
@@ -15,7 +17,26 @@ type Usuario = {
   rol: Rol;
   activo: boolean;
   token_version: number;
+  debe_cambiar_password: boolean;
 };
+
+const resetPasswordSchema = z.object({
+  action: z.literal("reset_password"),
+});
+
+function generateTempPassword(length = 16) {
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
+  let password = "";
+  const bytes = randomBytes(length);
+  for (let i = 0; i < length; i++) {
+    password += charset[bytes[i] % charset.length];
+  }
+  if (!/[A-Z]/.test(password)) password = password.slice(0, -1) + "A";
+  if (!/[a-z]/.test(password)) password = password.slice(0, -1) + "a";
+  if (!/[0-9]/.test(password)) password = password.slice(0, -1) + "2";
+  if (!/[!@#$%^&*]/.test(password)) password = password.slice(0, -1) + "!";
+  return password;
+}
 
 function emailDuplicado(error: unknown): boolean {
   return (
@@ -42,7 +63,73 @@ export async function PATCH(
     const sesion = await requireApiUser(["admin"], "usuarios.manage");
     assertSameOrigin(request);
     const id = userIdSchema.parse((await context.params).id);
-    const parsed = userUpdateSchema.safeParse(await request.json());
+    const body = await request.json();
+
+    // Check for reset_password action
+    const resetParsed = resetPasswordSchema.safeParse(body);
+    if (resetParsed.success) {
+      const ip = clientIp(request);
+      const tempPassword = generateTempPassword(16);
+      const hash = await bcrypt.hash(tempPassword, 12);
+
+      const usuario = await withTransaction(async (client) => {
+        const anterior = (
+          await client.query<Usuario>(
+            `SELECT id,nombre,email,rol,activo,token_version,debe_cambiar_password FROM usuarios
+              WHERE id=$1 AND eliminado_en IS NULL FOR UPDATE`,
+            [id],
+          )
+        ).rows[0];
+        if (!anterior) {
+          throw new ApiError(404, "USUARIO_NO_ENCONTRADO", "Usuario inexistente");
+        }
+
+        if (id === sesion.id) {
+          throw new ApiError(
+            400,
+            "OPERACION_NO_PERMITIDA",
+            "No podés resetear tu propia contraseña desde aquí",
+          );
+        }
+
+        const actualizada = (
+          await client.query<Usuario>(
+            `UPDATE usuarios
+                SET password_hash = $2,
+                    debe_cambiar_password = true,
+                    intentos_fallidos = 0,
+                    bloqueado_hasta = NULL,
+                    token_version = token_version + 1,
+                    actualizado_en = now()
+              WHERE id = $1
+              RETURNING id,nombre,email,rol,activo,token_version,debe_cambiar_password`,
+            [id, hash],
+          )
+        ).rows[0];
+
+        await auditar(client, {
+          usuarioId: sesion.id,
+          accion: "UPDATE",
+          tabla: "usuarios",
+          registroId: id,
+          antes: anterior,
+          despues: { ...actualizada, password_reseteada: true, temp_password_generada: true },
+          ip,
+        });
+
+        return { ...actualizada, tempPassword };
+      });
+
+      // Devolver la contraseña temporal SOLO una vez en la respuesta
+      return NextResponse.json({
+        usuario: usuario,
+        tempPassword: usuario.tempPassword,
+        message: "Contraseña temporal generada. Muéstrasela al usuario ahora (no se volverá a mostrar).",
+      });
+    }
+
+    // Normal update flow
+    const parsed = userUpdateSchema.safeParse(body);
     if (!parsed.success) {
       throw new ApiError(400, "VALIDATION_ERROR", "Datos inválidos", {
         issues: parsed.error.issues.map((issue) => ({
@@ -57,7 +144,7 @@ export async function PATCH(
     const usuario = await withTransaction(async (client) => {
       const anterior = (
         await client.query<Usuario>(
-          `SELECT id,nombre,email,rol,activo,token_version FROM usuarios
+          `SELECT id,nombre,email,rol,activo,token_version,debe_cambiar_password FROM usuarios
             WHERE id=$1 AND eliminado_en IS NULL FOR UPDATE`,
           [id],
         )
@@ -108,7 +195,7 @@ export async function PATCH(
       const actualizada = (
         await client.query<Usuario>(
           `UPDATE usuarios SET ${set.join(", ")} WHERE id=$${n}
-           RETURNING id,nombre,email,rol,activo,token_version`,
+           RETURNING id,nombre,email,rol,activo,token_version,debe_cambiar_password`,
           [...values, id],
         )
       ).rows[0];

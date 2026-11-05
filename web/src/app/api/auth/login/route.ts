@@ -24,6 +24,7 @@ type UsuarioRow = {
   intentos_fallidos: number;
   bloqueado_hasta: Date | null;
   token_version: number;
+  debe_cambiar_password: boolean;
 };
 
 export async function POST(request: Request) {
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     const resultado = await withTransaction(async (client) => {
       const { rows } = await client.query<UsuarioRow>(
         `SELECT id, nombre, email, rol, password_hash, activo,
-                intentos_fallidos, bloqueado_hasta, token_version
+                intentos_fallidos, bloqueado_hasta, token_version, debe_cambiar_password
            FROM usuarios
           WHERE lower(email) = lower($1)
             AND eliminado_en IS NULL
@@ -151,6 +152,24 @@ export async function POST(request: Request) {
     }
 
     const usuario = resultado.usuario;
+
+    // Si debe cambiar contraseña, no crear sesión completa, devolver flag
+    if (usuario.debe_cambiar_password) {
+      return NextResponse.json(
+        {
+          error: "Debe cambiar su contraseña antes de continuar",
+          code: "PASSWORD_CHANGE_REQUIRED",
+          user: {
+            id: usuario.id,
+            nombre: usuario.nombre,
+            email: usuario.email,
+            rol: usuario.rol,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
     const token = await signSession({
       id: usuario.id,
       email: usuario.email,
