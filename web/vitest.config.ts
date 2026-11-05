@@ -14,5 +14,6 @@ export default defineConfig({
       reporter: ["text", "html"],
     },
     fileParallelism: false,
+    setupFiles: ["./tests/setup.ts"],
   },
 });

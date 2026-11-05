@@ -123,13 +123,30 @@ async function runMigrations(database) {
 
 module.exports = { runMigrations, loadEnvLocal, sha256, listMigrationFiles };
 
+function assertTestDatabase(database) {
+  if (!database.endsWith('_test')) {
+    throw new Error(
+      `SEGURIDAD: Se intentó migrar una base que NO termina en '_test'.\n` +
+      `Base objetivo: ${database}\n` +
+      `Esto protegería la base real (gestion_estacionamiento) de escrituras accidentales.\n` +
+      `Usa --database gestion_estacionamiento_test o define PGDATABASE=gestion_estacionamiento_test`
+    );
+  }
+}
+
 if (require.main === module) {
   loadEnvLocal();
   const args = process.argv.slice(2);
   const i = args.indexOf('--database');
   const database = i !== -1 ? args[i + 1] : (process.env.PGDATABASE || 'gestion_estacionamiento');
+  
+  // Guardia de seguridad: solo permitir bases de test
+  assertTestDatabase(database);
+  
   console.log(`Migrando base: ${database}`);
   runMigrations(database)
     .then((n) => { console.log(`\nListo. Migraciones nuevas aplicadas: ${n}`); process.exit(0); })
     .catch((err) => { console.error(`\nERROR: ${err.message}`); process.exit(1); });
 }
+
+module.exports = { runMigrations, loadEnvLocal, sha256, listMigrationFiles, assertTestDatabase };
