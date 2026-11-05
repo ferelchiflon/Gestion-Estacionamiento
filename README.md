@@ -129,3 +129,61 @@ configurado para cuando se endurezca el acceso local/red.
 shasum -a 256 database/migrations/*.sql
 psql -d gestion_estacionamiento -c "SELECT version, checksum, applied_at FROM schema_migrations ORDER BY version;"
 ```
+
+## Acceso y recuperación de cuenta
+
+### Credenciales y almacenamiento seguro
+- Las contraseñas **nunca** se guardan en el repositorio ni en variables de entorno versionadas.
+- `ADMIN_PASSWORD` en `.env.local` se usa **solo para crear el primer admin**; tras crearlo, **vaciarla** (dejar `ADMIN_PASSWORD=`).
+- Las contraseñas generadas por scripts de recuperación se escriben **SOLO** en:
+  ```
+  ~/.credenciales-estacionamiento/credenciales-estacionamiento.txt  (chmod 600)
+  ```
+- Backups de BD antes de cambios estructurales: `~/backups/` (fuera del repo, `chmod 600`).
+
+### Scripts de terminal (requieren `PGADMIN_USER` / `PGADMIN_PASSWORD`)
+
+| Comando | Descripción |
+|---|---|
+| `npm run user:list` | Lista usuarios (sin hashes) |
+| `npm run user:reset -- --email X --generar` | Genera contraseña fuerte (20 chars), actualiza hash (bcrypt cost 12), resetea `intentos_fallidos=0` y `bloqueado_hasta=NULL`, escribe clave en archivo protegido |
+| `npm run user:unlock -- --email X --desbloquear` | Solo resetea `intentos_fallidos` y `bloqueado_hasta` |
+| `npm run user:create-admin -- --crear-admin --email X --nombre N --generar` | Crea admin nuevo (valida email único case-insensitive) con clave generada en archivo protegido |
+
+Ejemplos:
+```bash
+cd web
+npm run user:list
+npm run user:reset -- --email usuario@dominio.com --generar
+npm run user:unlock -- --email usuario@dominio.com --desbloquear
+npm run user:create-admin -- --crear-admin --email admin2@dominio.com --nombre "Admin Secundario" --generar
+```
+
+### Reset desde la interfaz (solo admin)
+En `/usuarios` (requiere rol `admin`):
+- Botón **"Resetear clave"** junto a cada usuario
+- Genera contraseña temporal (16 chars) que se muestra **UNA sola vez** en modal
+- Setea `debe_cambiar_password = true` en el usuario
+- El usuario debe cambiarla en su primer ingreso en `/cambiar-clave`
+- Auditoría en `auditoria_cambios` (sin guardar hashes)
+
+### Cambio de propia contraseña (cualquier usuario logueado)
+En `/mi-cuenta/clave`:
+- Pide contraseña actual
+- Nueva contraseña: mínimo 12 caracteres, letras y números, rechaza las 100 más comunes
+- Bloqueo tras 5 intentos fallidos validando la actual (15 min)
+- Limpia `debe_cambiar_password` si estaba seteada
+
+### "Olvidé mi contraseña" por email
+**NO implementado aún.** Ver diseño en `PENDIENTES.md` (sección 6). Requiere SMTP configurado.
+
+### ⚠️ Reset directo por SQL (último recurso)
+Solo si todo lo anterior falla y tenés acceso a `psql` como superusuario:
+```sql
+-- Desbloquear
+UPDATE usuarios SET intentos_fallidos=0, bloqueado_hasta=NULL WHERE email='...';
+
+-- Cambiar hash manualmente (bcrypt cost 12)
+UPDATE usuarios SET password_hash='<nuevo_hash_bcrypt>', token_version=token_version+1 WHERE email='...';
+```
+**Advertencia:** No genera auditoría automática, no escribe en archivo protegido, no invalida sesiones si no incrementás `token_version`.
