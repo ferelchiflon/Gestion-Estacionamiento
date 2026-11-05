@@ -62,4 +62,4 @@ CREATE INDEX idx_password_reset_tokens_expira ON password_reset_tokens (expira_e
 - Rate limiting en endpoint de solicitud
 - Logs de auditoría en `auditoria_cambios` (acción `PASSWORD_RESET_REQUEST`, `PASSWORD_RESET_COMPLETE`)
 
-**Estado:** Esperando OK para implementar.
+**Estado:** → **IMPLEMENTADO (5/11/2026): migración 012 `password_reset_tokens` (hash bcrypt, expira 30 min, un solo uso), `POST /api/auth/forgot-password` (respuesta genérica, rate limit 3/email-hora y 10/IP-hora), `POST /api/auth/reset-password` (política 12 chars + anti-comunes), página `/resetear-clave`, email vía Resend (`enviarEmailResetPassword` en `lib/services/email.ts`; sin RESEND_API_KEY se loguea la URL), link "¿Olvidé mi contraseña?" en login, auditoría de solicitudes. Requiere SMTP/Resend configurado en producción.**
