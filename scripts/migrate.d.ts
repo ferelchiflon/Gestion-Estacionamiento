@@ -10,3 +10,6 @@ export declare function listMigrationFiles(): Array<{
   sql: string;
 }>;
 export declare function assertTestDatabase(database: string): void;
+export declare function buscarBackupReciente(dir: string):
+  | { ok: false; motivo: string }
+  | { ok: true; cantidad: number; archivo: string; bytes: number; edadMs: number };
