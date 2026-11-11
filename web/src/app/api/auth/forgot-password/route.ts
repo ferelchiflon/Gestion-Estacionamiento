@@ -36,25 +36,28 @@ export async function POST(request: Request) {
 
     // Rate limit: max 3 requests per email/hour, 10 per IP/hour
     await withTransaction(async (client) => {
-      // Check rate limit for email
-      const { rows: emailLimit } = await client.query(
-        `SELECT count(*) FROM rate_limit
+      // Check rate limit for email.
+      // OJO: el INSERT hace upsert de UNA fila por (identificador, accion,
+      // ventana) incrementando `contador`, así que hay que SUMAR contador y no
+      // contar filas (count(*) devolvería siempre 1 y el límite nunca aplicaría).
+      const { rows: emailLimit } = await client.query<{ total: string }>(
+        `SELECT COALESCE(SUM(contador), 0) AS total FROM rate_limit
            WHERE identificador = $1 AND accion = 'forgot_password'
              AND ventana > now() - interval '1 hour'`,
         [email.toLowerCase()],
       );
-      if (Number(emailLimit[0].count) >= 3) {
+      if (Number(emailLimit[0].total) >= 3) {
         throw new Error("RATE_LIMIT_EMAIL");
       }
 
-      // Check rate limit for IP
-      const { rows: ipLimit } = await client.query(
-        `SELECT count(*) FROM rate_limit
+      // Check rate limit for IP (misma corrección: SUM(contador)).
+      const { rows: ipLimit } = await client.query<{ total: string }>(
+        `SELECT COALESCE(SUM(contador), 0) AS total FROM rate_limit
            WHERE identificador = $1 AND accion = 'forgot_password'
              AND ventana > now() - interval '1 hour'`,
         [ip],
       );
-      if (Number(ipLimit[0].count) >= 10) {
+      if (Number(ipLimit[0].total) >= 10) {
         throw new Error("RATE_LIMIT_IP");
       }
 

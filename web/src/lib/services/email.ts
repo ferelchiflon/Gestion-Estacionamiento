@@ -1,12 +1,33 @@
 import { Resend } from "resend";
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-
-if (!RESEND_API_KEY) {
-  console.warn("[email] RESEND_API_KEY no configurada; emails se loguearán pero no se enviarán");
+/**
+ * El cliente de Resend se crea leyendo el entorno EN CADA envío (no al importar
+ * el módulo): así la configuración puede cambiar en runtime y en tests.
+ */
+function obtenerClienteResend(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY;
+  return apiKey ? new Resend(apiKey) : null;
 }
 
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+/**
+ * Sólo APP_ENV=development cuenta como entorno de desarrollo: es el único caso
+ * en que se permite simular envíos y loguear URLs que contienen el token.
+ */
+function esDevelopment(): boolean {
+  return process.env.APP_ENV === "development";
+}
+
+/**
+ * Sin RESEND_API_KEY en un entorno que NO es development no se simula éxito:
+ * se devuelve error de configuración para que el llamador lo trate.
+ */
+function errorConfiguracionFaltante(): { success: false; error: string } {
+  return {
+    success: false,
+    error:
+      "Configuración de email faltante: RESEND_API_KEY no está definida en el entorno",
+  };
+}
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Estacionamiento <no-reply@estacionamiento.local>";
 
@@ -27,9 +48,14 @@ export async function enviarReciboPorEmail({
   adjuntoPdf: Uint8Array | Buffer;
   nombreArchivo?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  const resend = obtenerClienteResend();
   if (!resend) {
-    console.log("[email] Simulando envío a", destinatario, "asunto:", asunto);
-    return { success: true };
+    if (esDevelopment()) {
+      console.log("[email] DEV: simulando envío a", destinatario, "asunto:", asunto);
+      return { success: true };
+    }
+    console.error("[email] RESEND_API_KEY no configurada: no se envió el recibo a", destinatario);
+    return errorConfiguracionFaltante();
   }
 
   try {
@@ -134,10 +160,21 @@ export async function enviarEmailResetPassword(
     </html>
   `;
 
+  const resend = obtenerClienteResend();
   if (!resend) {
-    console.log("[email] Simulando envío de reset password a", email);
-    console.log("[email] Reset URL:", resetUrl);
-    return { success: true };
+    if (esDevelopment()) {
+      // development: se permite loguear la URL (incluye el token) para probar
+      // el flujo localmente. Es el único entorno donde esto está permitido.
+      console.log("[email] DEV: simulando envío de reset password a", email);
+      console.log("[email] DEV: Reset URL:", resetUrl);
+      return { success: true };
+    }
+    // Resto de los entornos: NO loguear la URL (contiene el token en claro)
+    // y NO simular éxito: se devuelve error de configuración.
+    console.error(
+      "[email] RESEND_API_KEY no configurada: no se envió el email de reset (la URL con token no se registra en logs)",
+    );
+    return errorConfiguracionFaltante();
   }
 
   try {
