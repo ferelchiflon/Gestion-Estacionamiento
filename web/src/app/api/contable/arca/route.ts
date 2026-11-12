@@ -5,6 +5,7 @@ import { arca, ADVERTENCIA_REFERENCIA } from "@/lib/contable";
 import { csvResponse } from "@/lib/csv";
 import { errorResponse, ApiError } from "@/lib/http";
 import { contableQuerySchema } from "@/lib/validations/contable";
+import { generarPdfDesdeHtml } from "@/lib/pdf";
 
 export async function GET(request: NextRequest) {
   try {
@@ -58,6 +59,60 @@ export async function GET(request: NextRequest) {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition": `attachment; filename="arca_${parsed.data.desde}_a_${parsed.data.hasta}.csv"`,
           "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    if (parsed.data.export === "pdf") {
+      const { configuracionFiscal } = await import("@/lib/contable");
+      const config = await configuracionFiscal(pool);
+      const filasHtml = reporte.dias.map((d) => `
+        <tr>
+          <td>${d.fecha}</td>
+          <td class="num">${d.comprobantes}</td>
+          <td class="num">$ ${d.neto}</td>
+          <td class="num">$ ${d.iva}</td>
+          <td class="num">$ ${d.total}</td>
+        </tr>
+      `).join("");
+      const filasFormaHtml = reporte.porFormaPago.map((f) => `
+        <tr>
+          <td>${f.forma_pago}</td>
+          <td class="num">${f.operaciones}</td>
+          <td class="num">$ ${f.total}</td>
+        </tr>
+      `).join("");
+      const html = `
+        <table><thead><tr>
+          <th>Fecha</th><th class="num">Comprobantes</th><th class="num">Neto</th><th class="num">IVA</th><th class="num">Total</th>
+        </thead><tbody>${filasHtml}</tbody></table>
+        <p class="nota">Totales: ${reporte.totales.comprobantes} comprobantes | Neto: $ ${reporte.totales.neto} | IVA: $ ${reporte.totales.iva} | Total: $ ${reporte.totales.total}</p>
+        <table><thead><tr>
+          <th>Forma de pago</th><th class="num">Operaciones</th><th class="num">Total</th>
+        </thead><tbody>${filasFormaHtml}</tbody></table>
+        <p class="nota">El sistema no emite comprobantes electrónicos; se listan recibos internos como "Recibo C".</p>
+        <p class="nota">Neto e IVA calculados sobre precio final usando la alícuota general de configuracion_fiscal.</p>
+        <p class="nota">Formato del Libro IVA Digital (RG 3685/4647): mejora futura.</p>
+        <p class="nota">${reporte.advertencias.join("<br>")}</p>
+      `;
+      const pdfBytes = await generarPdfDesdeHtml(
+        {
+          razonSocial: config.razon_social,
+          cuit: config.cuit,
+          condicionIva: config.condicion_iva,
+          direccion: config.direccion,
+          telefono: config.telefono,
+        },
+        {
+          titulo: "ARCA (ex AFIP) - Resumen de comprobantes emitidos",
+          periodo: `${reporte.periodo.desde} al ${reporte.periodo.hasta}`,
+          contenidoHtml: html,
+        },
+      );
+      return new Response(pdfBytes, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="arca_${parsed.data.desde}_a_${parsed.data.hasta}.pdf"`,
         },
       });
     }

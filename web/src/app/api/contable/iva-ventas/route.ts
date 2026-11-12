@@ -5,6 +5,7 @@ import { ivaVentas } from "@/lib/contable";
 import { csvResponse } from "@/lib/csv";
 import { errorResponse, ApiError } from "@/lib/http";
 import { contableQuerySchema } from "@/lib/validations/contable";
+import { generarPdfDesdeHtml } from "@/lib/pdf";
 
 /**
  * Reporte de IVA de ventas — REFERENCIA INTERNA.
@@ -55,6 +56,53 @@ export async function GET(request: NextRequest) {
           op.monto_total,
         ]),
       );
+    }
+
+    if (parsed.data.export === "pdf") {
+      const { configuracionFiscal } = await import("@/lib/contable");
+      const config = await configuracionFiscal(pool);
+      const filasHtml = reporte.operaciones.map((op) => `
+        <tr>
+          <td>${op.fecha}</td>
+          <td>${op.tipo === "movimiento" ? "Estacionamiento" : "Alquiler"}</td>
+          <td>${op.detalle}</td>
+          <td>${op.cliente ?? ""}</td>
+          <td>${op.forma_pago ?? ""}</td>
+          <td>${String(op.recibo_numero).padStart(6, "0")}</td>
+          <td class="num">$ ${op.neto}</td>
+          <td class="num">$ ${op.iva}</td>
+          <td class="num">${op.alicuota}%</td>
+          <td class="num">$ ${op.monto_total}</td>
+        </tr>
+      `).join("");
+      const html = `
+        <table><thead><tr>
+          <th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Cliente</th><th>Forma pago</th>
+          <th>Recibo</th><th class="num">Neto</th><th class="num">IVA</th><th class="num">Alíc %</th><th class="num">Total</th>
+        </thead><tbody>${filasHtml}</tbody></table>
+        <p class="nota">Total operaciones: ${reporte.totales.operaciones} | Neto: $ ${reporte.totales.neto} | IVA: $ ${reporte.totales.iva} | Total: $ ${reporte.totales.total}</p>
+        <p class="nota">${reporte.advertencias.join("<br>")}</p>
+      `;
+      const pdfBytes = await generarPdfDesdeHtml(
+        {
+          razonSocial: config.razon_social,
+          cuit: config.cuit,
+          condicionIva: config.condicion_iva,
+          direccion: config.direccion,
+          telefono: config.telefono,
+        },
+        {
+          titulo: "IVA Ventas (calculado)",
+          periodo: `${reporte.periodo.desde} al ${reporte.periodo.hasta}`,
+          contenidoHtml: html,
+        },
+      );
+      return new Response(pdfBytes, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="iva_ventas_${parsed.data.desde}_a_${parsed.data.hasta}.pdf"`,
+        },
+      });
     }
 
     return Response.json({ data: reporte });
