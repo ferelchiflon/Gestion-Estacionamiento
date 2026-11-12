@@ -33,3 +33,8 @@ export function centavosAPesosTexto(centavos: number): string {
 
   return `${signo}${pesos}.${String(resto).padStart(2, "0")}`;
 }
+
+/** Suma dos montos en formato "pesos.centavos" y devuelve el resultado en el mismo formato. */
+export function sumarCentavos(a: string, b: string): string {
+  return centavosAPesosTexto(pesosTextoACentavos(a) + pesosTextoACentavos(b));
+}
