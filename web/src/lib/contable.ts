@@ -210,6 +210,8 @@ const ADVERTENCIA_REFERENCIA =
   "Reporte de referencia interna, sujeto a revisión y aprobación del contador. " +
   "No constituye una declaración jurada.";
 
+export { ADVERTENCIA_REFERENCIA };
+
 /**
  * IVA de ventas: ingresos del período con neto e IVA por alícuota.
  *
@@ -582,4 +584,380 @@ export async function posicionIva(
     advertencias: [...new Set(advertencias)],
   };
 }
+/**
+ * IIBB: Ingresos Brutos del período (base = ventas netas del período).
+ * Cálculo según alícuota de configuracion_fiscal y percepciones/retenciones cargadas.
+ */
+export async function iibb(
+  pool: Pool,
+  periodo: RangoContable,
+): Promise<{
+  periodo: RangoContable;
+  alicuotaIva: string;
+  alicuotaIibb: string;
+  jurisdiccion: string;
+  ventasBrutas: string;
+  baseImponible: string;
+  impuestoDeterminado: string;
+  percepciones: string;
+  retenciones: string;
+  saldo: string;
+  estado: "a_pagar" | "a_favor" | "en_equilibrio";
+  porJurisdiccion: { jurisdiccion: string; percepciones: string; retenciones: string }[];
+  advertencias: string[];
+}> {
+  return enLectura(pool, async (client) => {
+    const cfg = await client.query(
+      `SELECT alicuota_iva, alicuota_iibb, jurisdiccion_iibb
+         FROM configuracion_fiscal WHERE id = 1`,
+    );
+    const alicuotaIva = Number(cfg.rows[0]?.alicuota_iva ?? 21);
+    const alicuotaIibb = Number(cfg.rows[0]?.alicuota_iibb ?? 3);
+    const jurisdiccion = cfg.rows[0]?.jurisdiccion_iibb ?? "CABA";
 
+    const ventasRows = await client.query(
+      `SELECT COALESCE(SUM(total_centavos), 0) AS total
+         FROM (
+           SELECT COALESCE(SUM(m.monto_pagado), 0) AS total_centavos
+             FROM movimientos m
+            WHERE m.estado_pago = 'pagado'
+              AND m.hora_salida IS NOT NULL
+              AND DATE(m.hora_salida AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $1 AND $2
+           UNION ALL
+           SELECT COALESCE(SUM(pa.monto), 0)
+             FROM pagos_alquiler pa
+            WHERE DATE(pa.fecha_pago) BETWEEN $1 AND $2
+           UNION ALL
+           SELECT COALESCE(SUM(d.monto_con_interes), 0)
+             FROM deudas d
+            WHERE d.estado = 'pagada'
+              AND DATE(d.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $1 AND $2
+         ) s`,
+      [periodo.desde, periodo.hasta],
+    );
+    const ventasBrutasCentavos = Number(ventasRows.rows[0]?.total ?? 0);
+
+    const baseImponibleCentavos = alicuotaIva > 0
+      ? Math.round((ventasBrutasCentavos * 10000) / (10000 + alicuotaIva * 100))
+      : ventasBrutasCentavos;
+
+    const impuestoDeterminadoCentavos = Math.round(baseImponibleCentavos * alicuotaIibb / 100);
+
+    const perRes = await client.query(
+      `SELECT jurisdiccion,
+              COALESCE(SUM(CASE WHEN tipo = 'percepcion' THEN monto END), 0) AS percepciones,
+              COALESCE(SUM(CASE WHEN tipo = 'retencion' THEN monto END), 0) AS retenciones
+         FROM percepciones_iibb
+        WHERE periodo = to_char($1::date, 'YYYY-MM')
+        GROUP BY jurisdiccion
+        ORDER BY jurisdiccion`,
+      [periodo.desde],
+    );
+
+    let totalPercepcionesCentavos = 0;
+    let totalRetencionesCentavos = 0;
+    const porJurisdiccion = perRes.rows.map((r) => {
+      const perc = Number(r.percepciones);
+      const ret = Number(r.retenciones);
+      totalPercepcionesCentavos += perc;
+      totalRetencionesCentavos += ret;
+      return {
+        jurisdiccion: r.jurisdiccion,
+        percepciones: centavosAPesosTexto(perc),
+        retenciones: centavosAPesosTexto(ret),
+      };
+    });
+
+    const saldoCentavos = impuestoDeterminadoCentavos - totalPercepcionesCentavos - totalRetencionesCentavos;
+
+    return {
+      periodo,
+      alicuotaIva: alicuotaIva.toFixed(2),
+      alicuotaIibb: alicuotaIibb.toFixed(2),
+      jurisdiccion,
+      ventasBrutas: centavosAPesosTexto(ventasBrutasCentavos),
+      baseImponible: centavosAPesosTexto(baseImponibleCentavos),
+      impuestoDeterminado: centavosAPesosTexto(impuestoDeterminadoCentavos),
+      percepciones: centavosAPesosTexto(totalPercepcionesCentavos),
+      retenciones: centavosAPesosTexto(totalRetencionesCentavos),
+      saldo: centavosAPesosTexto(saldoCentavos),
+      estado: estadoSaldo(saldoCentavos),
+      porJurisdiccion,
+      advertencias: [
+        "La base imponible se calcula como ventas netas (sin IVA) del período.",
+        "Estructura preparada para Convenio Multilateral; hoy funciona con una sola jurisdicción.",
+        ADVERTENCIA_REFERENCIA,
+      ],
+    };
+  });
+}
+
+/**
+ * Balance del período: ingresos por rubro menos gastos por categoría + cuentas por cobrar.
+ */
+export async function balance(
+  pool: Pool,
+  periodo: RangoContable,
+): Promise<{
+  periodo: RangoContable;
+  ingresos: {
+    estacionamiento: { ops: number; total: string };
+    alquileres: { ops: number; total: string };
+    deudas: { ops: number; total: string };
+    total: string;
+  };
+  gastos: {
+    porCategoria: { categoria: string; comprobantes: number; total: string }[];
+    total: string;
+  };
+  cuentasPorCobrar: {
+    cantidad: number;
+    total: string;
+    vencidas: number;
+  };
+  resultado: string;
+  advertencias: string[];
+}> {
+  return enLectura(pool, async (client) => {
+    const [est, alq, deu, gas, cxc] = await Promise.all([
+      client.query(
+        `SELECT COUNT(*)::int AS ops, COALESCE(SUM(monto_pagado), 0) AS total
+           FROM movimientos
+          WHERE estado_pago = 'pagado'
+            AND DATE(hora_entrada AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $1 AND $2`,
+        [periodo.desde, periodo.hasta],
+      ),
+      client.query(
+        `SELECT COUNT(*)::int AS ops, COALESCE(SUM(monto), 0) AS total
+           FROM pagos_alquiler
+          WHERE DATE(fecha_pago) BETWEEN $1 AND $2`,
+        [periodo.desde, periodo.hasta],
+      ),
+      client.query(
+        `SELECT COUNT(*)::int AS ops, COALESCE(SUM(monto_con_interes), 0) AS total
+           FROM deudas
+          WHERE estado = 'pagada'
+            AND DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $1 AND $2`,
+        [periodo.desde, periodo.hasta],
+      ),
+      client.query(
+        `SELECT COALESCE(c.nombre, 'Sin categoría') AS categoria,
+                COUNT(*)::int AS comprobantes,
+                COALESCE(SUM(g.total), 0) AS total
+           FROM gastos_compras g
+           LEFT JOIN categorias_gasto c ON g.categoria_id = c.id
+          WHERE g.fecha BETWEEN $1 AND $2
+            AND g.eliminado_en IS NULL
+          GROUP BY categoria
+          ORDER BY total DESC`,
+        [periodo.desde, periodo.hasta],
+      ),
+      client.query(
+        `SELECT COUNT(*)::int AS cantidad,
+                COALESCE(SUM(monto_con_interes), 0) AS total,
+                COALESCE(SUM(CASE WHEN fecha_vencimiento < CURRENT_DATE THEN 1 ELSE 0 END), 0) AS vencidas
+           FROM deudas
+          WHERE estado = 'pendiente'`,
+      ),
+    ]);
+
+    const ingresosTotalCentavos =
+      Number(est.rows[0]?.total ?? 0) +
+      Number(alq.rows[0]?.total ?? 0) +
+      Number(deu.rows[0]?.total ?? 0);
+    const gastosTotalCentavos = gas.rows.reduce((s, r) => s + Number(r.total), 0);
+    const cxcTotalCentavos = Number(cxc.rows[0]?.total ?? 0);
+
+    return {
+      periodo,
+      ingresos: {
+        estacionamiento: { ops: Number(est.rows[0]?.ops ?? 0), total: centavosAPesosTexto(Number(est.rows[0]?.total ?? 0)) },
+        alquileres: { ops: Number(alq.rows[0]?.ops ?? 0), total: centavosAPesosTexto(Number(alq.rows[0]?.total ?? 0)) },
+        deudas: { ops: Number(deu.rows[0]?.ops ?? 0), total: centavosAPesosTexto(Number(deu.rows[0]?.total ?? 0)) },
+        total: centavosAPesosTexto(ingresosTotalCentavos),
+      },
+      gastos: {
+        porCategoria: gas.rows.map((r) => ({
+          categoria: r.categoria,
+          comprobantes: Number(r.comprobantes),
+          total: centavosAPesosTexto(Number(r.total)),
+        })),
+        total: centavosAPesosTexto(gastosTotalCentavos),
+      },
+      cuentasPorCobrar: {
+        cantidad: Number(cxc.rows[0]?.cantidad ?? 0),
+        total: centavosAPesosTexto(cxcTotalCentavos),
+        vencidas: Number(cxc.rows[0]?.vencidas ?? 0),
+      },
+      resultado: centavosAPesosTexto(ingresosTotalCentavos - gastosTotalCentavos),
+      advertencias: [
+        "Ingresos: fecha de emisión del recibo (Argentina). Deudas: fecha de creación (no de pago).",
+        "El resultado no descuenta impuestos ni provisiones: es un indicador de gestión.",
+        ADVERTENCIA_REFERENCIA,
+      ],
+    };
+  });
+}
+/**
+ * Reporte mensual comparativo: ingresos vs gastos, plazas, ocupación, deudas.
+ */
+export async function reporteMensual(
+  pool: Pool,
+  mes: number,
+  anio: number,
+): Promise<{
+  periodo: { mes: number; anio: number; desde: string; hasta: string };
+  ingresos: {
+    estacionamiento: string;
+    alquileres: string;
+    deudas: string;
+    total: string;
+  };
+  gastos: { total: string; porCategoria: { categoria: string; total: string }[] };
+  plazas: { total: number; ocupadasRotacion: number; ocupadasAlquiler: number; libres: number; ocupacionPct: string };
+  deudas: { pendientes: number; total: string; vencidas: number };
+  advertencias: string[];
+}> {
+  const desde = `${anio}-${String(mes).padStart(2, "0")}-01`;
+  const hasta = new Date(anio, mes, 0).toISOString().split("T")[0];
+  const rango = { desde, hasta };
+
+  const [ing, _gas, deu] = await Promise.all([
+    balance(pool, rango),
+    ivaCompras(pool, rango),
+    pool.query(
+      `SELECT COUNT(*)::int AS cantidad,
+              COALESCE(SUM(monto_con_interes), 0) AS total,
+              COALESCE(SUM(CASE WHEN fecha_vencimiento < CURRENT_DATE THEN 1 ELSE 0 END), 0) AS vencidas
+         FROM deudas
+        WHERE estado = 'pendiente'`,
+    ),
+  ]);
+
+  // Occupancy data - simplified for now, full data in /reportes
+  const occRes = await pool.query(
+    `SELECT 
+       (SELECT COUNT(*) FROM plazas WHERE eliminado_en IS NULL) AS total_plazas,
+       (SELECT COUNT(*) FROM movimientos WHERE hora_salida IS NULL AND eliminado_en IS NULL) AS ocupadas_rotacion,
+       (SELECT COUNT(*) FROM contratos_alquiler ca JOIN plazas p ON ca.plaza_id = p.id WHERE ca.estado = 'activo' AND ca.fecha_inicio <= CURRENT_DATE AND (ca.fecha_fin IS NULL OR ca.fecha_fin > CURRENT_DATE) AND p.eliminado_en IS NULL) AS ocupadas_alquiler`,
+  );
+
+  const occ = occRes.rows[0];
+  const totalPlazas = Number(occ?.total_plazas ?? 0);
+  const ocupadasRotacion = Number(occ?.ocupadas_rotacion ?? 0);
+  const ocupadasAlquiler = Number(occ?.ocupadas_alquiler ?? 0);
+  const libres = totalPlazas - ocupadasRotacion - ocupadasAlquiler;
+
+  return {
+    periodo: { mes, anio, desde, hasta },
+    ingresos: {
+      estacionamiento: ing.ingresos.estacionamiento.total,
+      alquileres: ing.ingresos.alquileres.total,
+      deudas: ing.ingresos.deudas.total,
+      total: ing.ingresos.total,
+    },
+    gastos: {
+      total: ing.gastos.total,
+      porCategoria: ing.gastos.porCategoria.map((c) => ({ categoria: c.categoria, total: c.total })),
+    },
+    plazas: {
+      total: totalPlazas,
+      ocupadasRotacion,
+      ocupadasAlquiler,
+      libres,
+      ocupacionPct: totalPlazas > 0 ? ((ocupadasRotacion + ocupadasAlquiler) / totalPlazas * 100).toFixed(1) : "0.0",
+    },
+    deudas: { pendientes: Number(deu.rows[0]?.cantidad ?? 0), total: centavosAPesosTexto(Number(deu.rows[0]?.total ?? 0)), vencidas: Number(deu.rows[0]?.vencidas ?? 0) },
+    advertencias: [
+      "Reporte mensual: consolidado de balance + ocupación al cierre del mes.",
+      "Ocupación de rotación = vehículos en plaza ahora; alquiler = contratos activos hoy.",
+      "Deudas reflejan estado al cierre del mes (no incluyen pagos del mes sin fecha de pago).",
+      ADVERTENCIA_REFERENCIA,
+    ],
+  };
+}
+/**
+ * ARCA (ex AFIP): resumen de comprobantes emitidos (Recibo C interno).
+ */
+export async function arca(
+  pool: Pool,
+  periodo: RangoContable,
+): Promise<{
+  periodo: RangoContable;
+  puntoVenta: number;
+  dias: { fecha: string; comprobantes: number; neto: string; iva: string; total: string }[];
+  totales: { comprobantes: number; neto: string; iva: string; total: string };
+  porFormaPago: { forma_pago: string; operaciones: number; total: string }[];
+  advertencias: string[];
+}> {
+  return enLectura(pool, async (client) => {
+    const cfg = await client.query(`SELECT punto_venta FROM configuracion_fiscal WHERE id = 1`);
+    const pv = Number(cfg.rows[0]?.punto_venta ?? 1);
+    const alicuota = Number((await client.query(`SELECT alicuota_iva FROM configuracion_fiscal WHERE id = 1`)).rows[0]?.alicuota_iva ?? 21);
+
+    const diasRes = await client.query(
+      `SELECT DATE(hora_entrada AT TIME ZONE 'America/Argentina/Buenos_Aires') AS fecha,
+              COUNT(*)::int AS comprobantes,
+              COALESCE(SUM(monto_pagado), 0) AS total_centavos
+         FROM movimientos
+        WHERE estado_pago = 'pagado'
+          AND hora_salida IS NOT NULL
+          AND DATE(hora_entrada AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $1 AND $2
+        GROUP BY fecha
+        ORDER BY fecha`,
+      [periodo.desde, periodo.hasta],
+    );
+
+    const dias = diasRes.rows.map((r) => {
+      const totalCentavos = Number(r.total_centavos);
+      const { netoCentavos, ivaCentavos } = desglosarIvaInclusive(totalCentavos, alicuota);
+      return {
+        fecha: r.fecha,
+        comprobantes: Number(r.comprobantes),
+        neto: centavosAPesosTexto(netoCentavos),
+        iva: centavosAPesosTexto(ivaCentavos),
+        total: centavosAPesosTexto(totalCentavos),
+      };
+    });
+
+    const formaRes = await client.query(
+      `SELECT COALESCE(forma_pago, 'sin dato') AS forma_pago,
+              COUNT(*)::int AS operaciones,
+              COALESCE(SUM(monto_pagado), 0) AS total
+         FROM movimientos
+        WHERE estado_pago = 'pagado'
+          AND DATE(hora_entrada AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $1 AND $2
+        GROUP BY forma_pago
+        ORDER BY total DESC`,
+      [periodo.desde, periodo.hasta],
+    );
+
+    const totales = dias.reduce(
+      (acc, d) => ({
+        comprobantes: acc.comprobantes + d.comprobantes,
+        neto: centavosAPesosTexto(pesosTextoACentavos(acc.neto) + pesosTextoACentavos(d.neto)),
+        iva: centavosAPesosTexto(pesosTextoACentavos(acc.iva) + pesosTextoACentavos(d.iva)),
+        total: centavosAPesosTexto(pesosTextoACentavos(acc.total) + pesosTextoACentavos(d.total)),
+      }),
+      { comprobantes: 0, neto: "0.00", iva: "0.00", total: "0.00" },
+    );
+
+    return {
+      periodo,
+      puntoVenta: pv,
+      dias,
+      totales,
+      porFormaPago: formaRes.rows.map((r) => ({
+        forma_pago: r.forma_pago,
+        operaciones: Number(r.operaciones),
+        total: centavosAPesosTexto(Number(r.total)),
+      })),
+      advertencias: [
+        "El sistema no emite comprobantes electrónicos: se listan recibos internos como \"Recibo C\".",
+        "Neto e IVA calculados sobre precio final usando la alícuota general de configuracion_fiscal.",
+        "Formato del Libro IVA Digital (RG 3685/4647): mejora futura.",
+        ADVERTENCIA_REFERENCIA,
+      ],
+    };
+  });
+}
