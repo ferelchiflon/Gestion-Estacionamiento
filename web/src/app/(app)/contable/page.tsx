@@ -199,3 +199,287 @@ export default async function ContablePage({
   );
 }
 
+function VistaIibb({ reporte }: { reporte: Awaited<ReturnType<typeof iibb>> }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard label="Ventas brutas" value={`$ ${reporte.ventasBrutas}`} icon={<Landmark className="text-slate-600" size={20} />} />
+        <StatCard label="Base imponible" value={`$ ${reporte.baseImponible}`} icon={<Scale className="text-blue-600" size={20} />} />
+        <StatCard label="Impuesto determinado" value={`$ ${reporte.impuestoDeterminado}`} icon={<BarChart3 className="text-amber-600" size={20} />} />
+        <StatCard label="Saldo" value={`$ ${reporte.saldo}`} icon={<Landmark className={reporte.estado === "a_pagar" ? "text-red-600" : "text-green-600"} size={20} />} />
+        <StatCard label="Alícuota IIBB" value={`${reporte.alicuotaIibb}%`} icon={<FileText className="text-slate-500" size={20} />} />
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Percepciones y retenciones por jurisdicción</div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Jurisdicción</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Percepciones</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Retenciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {reporte.porJurisdiccion.map((j) => (
+                <tr key={j.jurisdiccion} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{j.jurisdiccion}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">${j.percepciones}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">${j.retenciones}</td>
+                </tr>
+              ))}
+              <tr className="bg-slate-50 font-semibold">
+                <td className="px-4 py-3 text-sm text-slate-900">TOTALES</td>
+                <td className="px-4 py-3 text-right text-sm text-slate-700">${reporte.percepciones}</td>
+                <td className="px-4 py-3 text-right text-sm text-slate-700">${reporte.retenciones}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-semibold mb-2">Advertencias:</p>
+        <ul className="list-disc list-inside space-y-1">
+          {reporte.advertencias.map((a, i) => <li key={i}>{a}</li>)}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function VistaBalance({ reporte }: { reporte: Awaited<ReturnType<typeof balance>> }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard label="Ingresos" value={`$ ${reporte.ingresos.total}`} icon={<TrendingUp className="text-green-600" size={20} />} />
+        <StatCard label="Gastos" value={`$ ${reporte.gastos.total}`} icon={<ShoppingCart className="text-red-600" size={20} />} />
+        <StatCard label="Resultado" value={`$ ${reporte.resultado}`} icon={<BarChart3 className={Number(pesosTextoACentavos(reporte.resultado)) >= 0 ? "text-green-600" : "text-red-600"} size={20} />} />
+        <StatCard label="Por cobrar" value={`$ ${reporte.cuentasPorCobrar.total}`} icon={<Landmark className="text-amber-600" size={20} />} />
+        <StatCard label="Vencidas" value={reporte.cuentasPorCobrar.vencidas} icon={<AlertTriangle className="text-red-600" size={20} />} />
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Ingresos por rubro</div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Rubro</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Operaciones</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr className="hover:bg-slate-50"><td className="px-4 py-3 text-sm font-medium text-slate-900">Estacionamiento</td><td className="px-4 py-3 text-right text-sm text-slate-700">{reporte.ingresos.estacionamiento.ops}</td><td className="px-4 py-3 text-right text-sm text-slate-700">${reporte.ingresos.estacionamiento.total}</td></tr>
+              <tr className="hover:bg-slate-50"><td className="px-4 py-3 text-sm font-medium text-slate-900">Alquileres</td><td className="px-4 py-3 text-right text-sm text-slate-700">{reporte.ingresos.alquileres.ops}</td><td className="px-4 py-3 text-right text-sm text-slate-700">${reporte.ingresos.alquileres.total}</td></tr>
+              <tr className="hover:bg-slate-50"><td className="px-4 py-3 text-sm font-medium text-slate-900">Deudas cobradas</td><td className="px-4 py-3 text-right text-sm text-slate-700">{reporte.ingresos.deudas.ops}</td><td className="px-4 py-3 text-right text-sm text-slate-700">${reporte.ingresos.deudas.total}</td></tr>
+              <tr className="bg-slate-50 font-semibold"><td className="px-4 py-3 text-sm text-slate-900">TOTAL INGRESOS</td><td className="px-4 py-3 text-right text-sm text-slate-700">{reporte.ingresos.estacionamiento.ops + reporte.ingresos.alquileres.ops + reporte.ingresos.deudas.ops}</td><td className="px-4 py-3 text-right text-sm text-slate-900">${reporte.ingresos.total}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Gastos por categoría</div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Categoría</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Comprobantes</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {reporte.gastos.porCategoria.map((c) => (
+                <tr key={c.categoria} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{c.categoria}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">{c.comprobantes}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">${c.total}</td>
+                </tr>
+              ))}
+              <tr className="bg-slate-50 font-semibold">
+                <td className="px-4 py-3 text-sm text-slate-900">TOTAL GASTOS</td>
+                <td className="px-4 py-3 text-right text-sm text-slate-700">{reporte.gastos.porCategoria.reduce((s, c) => s + c.comprobantes, 0)}</td>
+                <td className="px-4 py-3 text-right text-sm text-slate-900">${reporte.gastos.total}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Cuentas por cobrar</div>
+        <div className="p-4 grid grid-cols-3 gap-4">
+          <div className="text-center p-3 bg-slate-50 rounded-lg">
+            <p className="text-2xl font-bold text-slate-900">${reporte.cuentasPorCobrar.total}</p>
+            <p className="text-xs text-slate-500">Total por cobrar</p>
+          </div>
+          <div className="text-center p-3 bg-slate-50 rounded-lg">
+            <p className="text-2xl font-bold text-slate-900">{reporte.cuentasPorCobrar.cantidad}</p>
+            <p className="text-xs text-slate-500">Deudores</p>
+          </div>
+          <div className="text-center p-3 bg-red-50 rounded-lg">
+            <p className="text-2xl font-bold text-red-600">{reporte.cuentasPorCobrar.vencidas}</p>
+            <p className="text-xs text-red-600">Vencidas</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-semibold mb-2">Advertencias:</p>
+        <ul className="list-disc list-inside space-y-1">
+          {reporte.advertencias.map((a, i) => <li key={i}>{a}</li>)}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function VistaMensual({ reporte }: { reporte: Awaited<ReturnType<typeof reporteMensual>> }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard label="Ingresos" value={`$ ${reporte.ingresos.total}`} icon={<TrendingUp className="text-green-600" size={20} />} />
+        <StatCard label="Gastos" value={`$ ${reporte.gastos.total}`} icon={<ShoppingCart className="text-red-600" size={20} />} />
+        <StatCard label="Ocupación" value={`${reporte.plazas.ocupacionPct}%`} icon={<Landmark className="text-blue-600" size={20} />} />
+        <StatCard label="Deudas" value={`$ ${reporte.deudas.total}`} icon={<AlertTriangle className="text-amber-600" size={20} />} />
+        <StatCard label="Vencidas" value={reporte.deudas.vencidas} icon={<AlertTriangle className="text-red-600" size={20} />} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Ingresos por rubro</div>
+          <div className="p-4 space-y-2">
+            <div className="flex justify-between"><span>Estacionamiento</span><span className="font-semibold">${reporte.ingresos.estacionamiento}</span></div>
+            <div className="flex justify-between"><span>Alquileres</span><span className="font-semibold">${reporte.ingresos.alquileres}</span></div>
+            <div className="flex justify-between"><span>Deudas cobradas</span><span className="font-semibold">${reporte.ingresos.deudas}</span></div>
+            <div className="border-t pt-2 flex justify-between font-semibold"><span>Total</span><span>${reporte.ingresos.total}</span></div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Gastos por categoría</div>
+          <div className="p-4 space-y-2">
+            {reporte.gastos.porCategoria.map((c) => (
+              <div key={c.categoria} className="flex justify-between">
+                <span>{c.categoria}</span><span className="font-semibold">${c.total}</span>
+              </div>
+            ))}
+            <div className="border-t pt-2 flex justify-between font-semibold"><span>Total</span><span>${reporte.gastos.total}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Plazas y ocupación</div>
+          <div className="p-4 grid grid-cols-2 gap-4">
+            <StatCard label="Total" value={reporte.plazas.total} icon={<Landmark className="text-slate-600" size={16} />} />
+            <StatCard label="Rotación" value={reporte.plazas.ocupadasRotacion} icon={<TrendingUp className="text-blue-600" size={16} />} />
+            <StatCard label="Alquiler" value={reporte.plazas.ocupadasAlquiler} icon={<ShoppingCart className="text-green-600" size={16} />} />
+            <StatCard label="Libres" value={reporte.plazas.libres} icon={<AlertTriangle className="text-green-600" size={16} />} />
+            <StatCard label="% Ocupación" value={`${reporte.plazas.ocupacionPct}%`} icon={<BarChart3 className="text-teal-600" size={16} />} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Deudas</div>
+          <div className="p-4 grid grid-cols-3 gap-4">
+            <StatCard label="Pendientes" value={reporte.deudas.pendientes} icon={<AlertTriangle className="text-amber-600" size={16} />} />
+            <StatCard label="Total" value={`$ ${reporte.deudas.total}`} icon={<TrendingUp className="text-slate-600" size={16} />} />
+            <StatCard label="Vencidas" value={reporte.deudas.vencidas} icon={<AlertTriangle className="text-red-600" size={16} />} />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-semibold mb-2">Advertencias:</p>
+        <ul className="list-disc list-inside space-y-1">
+          {reporte.advertencias.map((a, i) => <li key={i}>{a}</li>)}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function VistaArca({ reporte }: { reporte: Awaited<ReturnType<typeof arca>> }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">ARCA (ex AFIP) — Comprobantes emitidos</h2>
+          <p className="text-sm text-slate-500">Punto de venta: {reporte.puntoVenta}</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Resumen por día</div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Comprobantes</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Neto</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">IVA</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {reporte.dias.map((d) => (
+                <tr key={d.fecha} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{d.fecha}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">{d.comprobantes}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">${d.neto}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">${d.iva}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">${d.total}</td>
+                </tr>
+              ))}
+              <tr className="bg-slate-50 font-semibold">
+                <td className="px-4 py-3 text-sm text-slate-900">TOTALES</td>
+                <td className="px-4 py-3 text-right text-sm text-slate-900">{reporte.totales.comprobantes}</td>
+                <td className="px-4 py-3 text-right text-sm text-slate-900">${reporte.totales.neto}</td>
+                <td className="px-4 py-3 text-right text-sm text-slate-900">${reporte.totales.iva}</td>
+                <td className="px-4 py-3 text-right text-sm text-slate-900">${reporte.totales.total}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Cobros de estacionamiento por forma de pago</div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Forma de pago</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Operaciones</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {reporte.porFormaPago.map((f) => (
+                <tr key={f.forma_pago} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 text-sm text-slate-900 capitalize">{f.forma_pago}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">{f.operaciones}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">${f.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-semibold mb-2">Advertencias:</p>
+        <ul className="list-disc list-inside space-y-1">
+          {reporte.advertencias.map((a, i) => <li key={i}>{a}</li>)}
+        </ul>
+      </div>
+    </div>
+  );
+}
