@@ -1,20 +1,24 @@
 import Link from "next/link";
-import { Download, Filter, Scale, ShieldAlert, ShoppingCart, TrendingUp } from "lucide-react";
+import { Download, Filter, Scale, ShieldAlert, ShoppingCart, TrendingUp, Landmark, BarChart3, Calendar, FileText } from "lucide-react";
 import { requirePageUser } from "@/lib/auth/guards";
 import { getPool } from "@/lib/db";
-import { ivaCompras, ivaVentas, posicionIva } from "@/lib/contable";
+import { ivaCompras, ivaVentas, posicionIva, iibb, balance, reporteMensual, arca } from "@/lib/contable";
 import { TIMEZONE_AR } from "@/lib/format";
 import { rangoPeriodoSchema } from "@/lib/validations/contable";
 import { VistaCompras, VistaPosicion, VistaVentas } from "./vistas";
 
 export const dynamic = "force-dynamic";
 
-type Vista = "ventas" | "compras" | "posicion";
+type Vista = "ventas" | "compras" | "posicion" | "iibb" | "balance" | "mensual" | "arca";
 
 const VISTAS: { id: Vista; label: string; endpoint: string; icono: typeof TrendingUp }[] = [
   { id: "ventas", label: "IVA Ventas", endpoint: "/api/contable/iva-ventas", icono: TrendingUp },
   { id: "compras", label: "IVA Compras", endpoint: "/api/contable/iva-compras", icono: ShoppingCart },
   { id: "posicion", label: "Posición IVA", endpoint: "/api/contable/posicion-iva", icono: Scale },
+  { id: "iibb", label: "IIBB", endpoint: "/api/contable/iibb", icono: Landmark },
+  { id: "balance", label: "Balance", endpoint: "/api/contable/balance", icono: BarChart3 },
+  { id: "mensual", label: "Mensual", endpoint: "/api/contable/mensual", icono: Calendar },
+  { id: "arca", label: "ARCA", endpoint: "/api/contable/arca", icono: FileText },
 ];
 
 function hoyEnArgentina(): string {
@@ -66,9 +70,15 @@ export default async function ContablePage({
   const ventas = vista === "ventas" ? await ivaVentas(pool, periodo) : null;
   const compras = vista === "compras" ? await ivaCompras(pool, periodo) : null;
   const posicion = vista === "posicion" ? await posicionIva(pool, periodo) : null;
+  const iibbData = vista === "iibb" ? await iibb(pool, periodo) : null;
+  const balanceData = vista === "balance" ? await balance(pool, periodo) : null;
+  const mensualData = vista === "mensual" ? await reporteMensual(pool, Number(periodo.hasta.slice(5, 7)), Number(periodo.hasta.slice(0, 4))) : null;
+  const arcaData = vista === "arca" ? await arca(pool, periodo) : null;
 
   const endpointActual = VISTAS.find((v) => v.id === vista)!.endpoint;
-  const csvUrl = `${endpointActual}?desde=${periodo.desde}&hasta=${periodo.hasta}&export=csv`;
+  const csvUrl = vista === "mensual"
+    ? `${endpointActual}?mes=${periodo.hasta.slice(5, 7)}&anio=${periodo.hasta.slice(0, 4)}&export=csv`
+    : `${endpointActual}?desde=${periodo.desde}&hasta=${periodo.hasta}&export=csv`;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
@@ -181,6 +191,10 @@ export default async function ContablePage({
       {ventas && <VistaVentas reporte={ventas} />}
       {compras && <VistaCompras reporte={compras} />}
       {posicion && <VistaPosicion reporte={posicion} />}
+      {iibbData && <VistaIibb reporte={iibbData} />}
+      {balanceData && <VistaBalance reporte={balanceData} />}
+      {mensualData && <VistaMensual reporte={mensualData} />}
+      {arcaData && <VistaArca reporte={arcaData} />}
     </div>
   );
 }
